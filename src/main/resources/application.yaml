@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: muse-ai
+  main:
+    banner-mode: console  # 显示banner（可选值：console-显示、off-关闭、log-输出到日志）
+  banner:
+    charset: UTF-8  # banner文件编码
+    location: classpath:banner
+# springdoc-openapi项目配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: cn.edu.sxu.museai.controller
+# knife4j的增强配置，不需要增强可以不配
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+server:
+  port: 7777
