@@ -26,3 +26,5 @@ knife4j:
 
 server:
   port: 7777
+  servlet:
+    context-path: /api
