@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10A37F"/>
+      <stop offset="100%" style="stop-color:#34D399"/>
+    </linearGradient>
+  </defs>
+
+  <!-- M 字母 - 简约风格 -->
+  <path d="M8 40 V8 L20 26 L34 8 V30"
+        fill="none"
+        stroke="url(#grad)"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- AI 点 - 灵感火花 -->
+  <circle cx="40" cy="10" r="5" fill="url(#grad)"/>
+  <circle cx="44" cy="18" r="3" fill="url(#grad)" opacity="0.7"/>
+</svg>
