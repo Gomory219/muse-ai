@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: muse-ai
+  # 使用 H2 内存数据库进行测试，避免连接真实数据库
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  # 禁用 H2 控制台
+  h2:
+    console:
+      enabled: false
+  # 禁用 MyBatis-Flex 的自动配置（如果需要）
+  autoconfigure:
+    exclude:
+      - com.mybatisflex.spring.boot.MyBatisFlexAutoConfiguration
+
+server:
+  port: 7777
+  servlet:
+    context-path: /api
