@@ -6,6 +6,11 @@ spring:
   banner:
     charset: UTF-8  # banner文件编码
     location: classpath:banner
+  datasource:
+    url: jdbc:mysql://106.54.215.151:3306/muse_ai
+    username: root
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 # springdoc-openapi项目配置
 springdoc:
   swagger-ui:

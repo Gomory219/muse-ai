@@ -1,6 +1,9 @@
 package cn.edu.sxu.museai.common;
 
 import cn.edu.sxu.museai.exception.ErrorCode;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 public class ResultUtils {
 
@@ -44,5 +47,17 @@ public class ResultUtils {
      */
     public static BaseResponse<?> error(ErrorCode errorCode, String message) {
         return new BaseResponse<>(errorCode.getCode(), null, message);
+    }
+
+    public static void handleUnauthorized(HttpServletResponse response) throws IOException {
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(ResultUtils.error(ErrorCode.NO_AUTH_ERROR).toString());
+    }
+
+    public static void handleUnLogin(HttpServletResponse response) throws IOException {
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(ResultUtils.error(ErrorCode.NOT_LOGIN_ERROR).toString());
     }
 }

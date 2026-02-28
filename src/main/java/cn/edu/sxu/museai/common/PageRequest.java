@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.common;
 
+import com.mybatisflex.core.paginate.Page;
 import lombok.Data;
 
 @Data
@@ -24,4 +25,8 @@ public class PageRequest {
      * 排序顺序（默认降序）
      */
     private String sortOrder = "descend";
+
+    public Page toPage() {
+        return new Page<>(pageNum, pageSize);
+    }
 }
