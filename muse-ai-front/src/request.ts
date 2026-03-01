@@ -26,22 +26,29 @@ myAxios.interceptors.response.use(
     const { data } = response
     // 未登录
     if (data.code === 40100) {
-      // 不是获取用户信息的请求，并且用户目前不是已经在用户登录页面，则跳转到登录页面
-      if (
-        !response.request.responseURL.includes('user/get/login') &&
-        !window.location.pathname.includes('/user/login')
-      ) {
-        message.warning('请先登录')
-        window.location.href = `/user/login?redirect=${window.location.href}`
-      }
+      handleUnauthorized()
     }
     return response
   },
   function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
+    // 未登录（error response）
+    if (error.response?.data?.code === 40100) {
+      handleUnauthorized()
+    }
     return Promise.reject(error)
   },
 )
+
+// 处理未登录
+function handleUnauthorized() {
+  // 清空存储中的用户信息
+  localStorage.removeItem('museai-user')
+  // 如果不在登录页，跳转并刷新页面以同步状态
+  if (!window.location.pathname.includes('/user/login')) {
+    message.warning('请先登录')
+    const loginUrl = `/user/login?redirect=${window.location.href}`
+    window.location.href = loginUrl
+  }
+}
 
 export default myAxios
