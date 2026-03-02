@@ -26,3 +26,10 @@ knife4j:
 
 server:
   port: 7777
+
+# MinIO配置
+minio:
+  endpoint: http://106.54.215.151:9000
+  access-key: root # 访问密钥（替换为你的）
+  secret-key: ${MINIO_SECRET_KEY} # 秘钥（替换为你的）
+  bucket-name: muse-ai # 存储文件的桶名称（需提前创建）
