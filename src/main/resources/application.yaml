@@ -11,6 +11,19 @@ spring:
     username: root
     password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.minimaxi.com/v1
+      api-key: ${MUSE_MINIMAX_API_KEY}
+      model-name: MiniMax-M2.5
+      log-requests: true
+      log-responses: true
+      max-tokens: 8192
+      strict-json-schema: true
+      response-format: json_object
+      max-retries: 3
 # springdoc-openapi项目配置
 springdoc:
   swagger-ui:
@@ -31,10 +44,12 @@ knife4j:
 
 server:
   port: 7777
-
+  servlet:
+    context-path: /api
 # MinIO配置
 minio:
   endpoint: http://106.54.215.151:9000
-  access-key: root # 访问密钥（替换为你的）
-  secret-key: ${MINIO_SECRET_KEY} # 秘钥（替换为你的）
-  bucket-name: muse-ai # 存储文件的桶名称（需提前创建）
+  access-key: root
+  secret-key: ${MINIO_SECRET_KEY}
+  bucket-name: muse-ai
+

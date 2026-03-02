@@ -22,10 +22,23 @@ public class ResultUtils {
      * 失败
      *
      * @param errorCode 错误码
+     * @param <T>       数据类型
      * @return 响应
      */
-    public static BaseResponse<?> error(ErrorCode errorCode) {
+    public static <T> BaseResponse<T> error(ErrorCode errorCode) {
         return new BaseResponse<>(errorCode);
+    }
+
+    /**
+     * 失败
+     *
+     * @param errorCode 错误码
+     * @param message   错误信息
+     * @param <T>       数据类型
+     * @return 响应
+     */
+    public static <T> BaseResponse<T> error(ErrorCode errorCode, String message) {
+        return new BaseResponse<>(errorCode.getCode(), null, message);
     }
 
     /**
@@ -33,31 +46,22 @@ public class ResultUtils {
      *
      * @param code    错误码
      * @param message 错误信息
+     * @param <T>     数据类型
      * @return 响应
      */
-    public static BaseResponse<?> error(int code, String message) {
+    public static <T> BaseResponse<T> error(int code, String message) {
         return new BaseResponse<>(code, null, message);
-    }
-
-    /**
-     * 失败
-     *
-     * @param errorCode 错误码
-     * @return 响应
-     */
-    public static BaseResponse<?> error(ErrorCode errorCode, String message) {
-        return new BaseResponse<>(errorCode.getCode(), null, message);
     }
 
     public static void handleUnauthorized(HttpServletResponse response) throws IOException {
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(ResultUtils.error(ErrorCode.NO_AUTH_ERROR).toString());
+        response.getWriter().write(ResultUtils.<String>error(ErrorCode.NO_AUTH_ERROR).toString());
     }
 
     public static void handleUnLogin(HttpServletResponse response) throws IOException {
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(ResultUtils.error(ErrorCode.NOT_LOGIN_ERROR).toString());
+        response.getWriter().write(ResultUtils.<String>error(ErrorCode.NOT_LOGIN_ERROR).toString());
     }
 }

@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.common;
 
+import cn.hutool.core.util.URLUtil;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.UUID;
 
 @Component
@@ -18,6 +20,9 @@ public class MinioUtil {
 
     @Value("${minio.bucket-name}")
     private String bucketName;
+
+    @Value("${minio.endpoint}")
+    private String baseUrl;
 
     // 构造器注入MinioClient
     public MinioUtil(MinioClient minioClient) {
@@ -57,8 +62,6 @@ public class MinioUtil {
                             .build()
             );
         }
-
-        // 5. 返回文件访问路径（MinIO默认访问地址：endpoint/bucketName/objectName）
-        return bucketName + "/" + objectName;
+        return baseUrl + "/" + bucketName + "/" + objectName;
     }
 }
