@@ -1,4 +1,4 @@
-package cn.edu.sxu.museai.ai.parser;
+package cn.edu.sxu.museai.core.parser;
 
 import cn.edu.sxu.museai.ai.model.HtmlCodeResult;
 import cn.edu.sxu.museai.ai.model.MultiFileResult;

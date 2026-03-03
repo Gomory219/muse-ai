@@ -25,6 +25,6 @@ class AiCodeGeneratorFacadeTest {
     @Test
     void generateCodeAndSaveStreaming() {
         Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE);
-        stringFlux.doOnNext(System.out::print).blockLast();
+        stringFlux.doOnNext(System.out::print).doOnComplete(System.out::println).blockLast();
     }
 }

@@ -1,4 +1,4 @@
-package cn.edu.sxu.museai.core;
+package cn.edu.sxu.museai.core.saver;
 
 
 import cn.edu.sxu.museai.ai.model.HtmlCodeResult;
@@ -12,6 +12,7 @@ import java.util.UUID;
 /**
  * 文件路径 tmp/code/业务名/uuid/index.html
  */
+@Deprecated
 public class CodeFileSaver {
     private static final String basePath = System.getProperty("user.dir") + "/tmp/code";
 
