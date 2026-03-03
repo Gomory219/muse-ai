@@ -62,7 +62,7 @@ class UserControllerTest {
     private User adminUser;
 
     private User normalUser;
-
+    
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
