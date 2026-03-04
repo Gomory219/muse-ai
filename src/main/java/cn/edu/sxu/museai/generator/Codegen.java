@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class Codegen {
 
-    private static String[] generateTables = new String[]{"user"};
+    private static String[] generateTables = new String[]{"app"};
 
     public static void main(String[] args) {
         Dict dict = YamlUtil.loadByPath("application.yaml");
@@ -41,7 +41,6 @@ public class Codegen {
         //设置根包
         globalConfig.setBasePackage("cn.edu.sxu.museai.gen");
 
-//        globalConfig.setSchema("public");
         //设置表前缀和只生成哪些表
         globalConfig.setGenerateTable(generateTables);
 
