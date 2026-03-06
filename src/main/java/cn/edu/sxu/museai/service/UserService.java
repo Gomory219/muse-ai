@@ -1,7 +1,7 @@
 package cn.edu.sxu.museai.service;
 
-import cn.edu.sxu.museai.model.dto.UserAddRequest;
-import cn.edu.sxu.museai.model.dto.UserQueryRequest;
+import cn.edu.sxu.museai.model.dto.user.UserAddRequest;
+import cn.edu.sxu.museai.model.dto.user.UserQueryRequest;
 import cn.edu.sxu.museai.model.vo.LoginUserVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
 import com.mybatisflex.core.service.IService;
@@ -80,4 +80,5 @@ public interface UserService extends IService<User> {
      * @return 是否新增成功
      */
     Long saveUser(UserAddRequest userAddRequest);
+
 }

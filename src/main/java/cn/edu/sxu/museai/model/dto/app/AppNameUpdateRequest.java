@@ -1,4 +1,4 @@
-package cn.edu.sxu.museai.model.dto;
+package cn.edu.sxu.museai.model.dto.app;
 
 import lombok.Data;
 

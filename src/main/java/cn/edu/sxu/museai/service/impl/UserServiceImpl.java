@@ -3,8 +3,8 @@ package cn.edu.sxu.museai.service.impl;
 import cn.edu.sxu.museai.constant.UserConstant;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
-import cn.edu.sxu.museai.model.dto.UserAddRequest;
-import cn.edu.sxu.museai.model.dto.UserQueryRequest;
+import cn.edu.sxu.museai.model.dto.user.UserAddRequest;
+import cn.edu.sxu.museai.model.dto.user.UserQueryRequest;
 import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.LoginUserVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
@@ -104,6 +104,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ThrowUtils.throwIf(effectedNums <= 0, ErrorCode.OPERATION_ERROR, "新增用户失败");
         return user.getId();
     }
+
 
     @Override
     public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {

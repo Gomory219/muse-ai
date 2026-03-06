@@ -1,12 +1,15 @@
 package cn.edu.sxu.museai.service;
 
+import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.dto.app.AppAddRequest;
+import cn.edu.sxu.museai.model.dto.app.AppNameUpdateRequest;
+import cn.edu.sxu.museai.model.dto.app.AppQueryRequest;
+import cn.edu.sxu.museai.model.dto.app.AppUpdateRequest;
+import cn.edu.sxu.museai.model.vo.UserVO;
 import com.mybatisflex.core.service.IService;
-import cn.edu.sxu.museai.entity.App;
-import cn.edu.sxu.museai.model.dto.AppAddRequest;
-import cn.edu.sxu.museai.model.dto.AppNameUpdateRequest;
-import cn.edu.sxu.museai.model.dto.AppQueryRequest;
-import cn.edu.sxu.museai.model.dto.AppUpdateRequest;
+import cn.edu.sxu.museai.model.entity.App;
 import cn.edu.sxu.museai.model.vo.AppVO;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -14,6 +17,8 @@ import java.util.List;
  * 应用 服务层
  */
 public interface AppService extends IService<App> {
+
+    Flux<String> chatToGenApp(String userMessage, Long appId, Long userId);
 
     /**
      * 创建应用
@@ -74,7 +79,7 @@ public interface AppService extends IService<App> {
      * @param id 应用id
      * @return 是否成功
      */
-    Boolean deleteAppByAdmin(Long id);
+    Boolean deleteAppByAdmin(DeleteRequest id);
 
     /**
      * 管理员更新应用
@@ -107,4 +112,6 @@ public interface AppService extends IService<App> {
      * @return 应用视图对象
      */
     AppVO getAppVO(App app);
+
+    String deploy(String appId, Long userId);
 }

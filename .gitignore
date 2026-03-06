@@ -75,3 +75,6 @@ __screenshots__/
 .claude/
 
 CLAUDE.md
+/src/test/
+/tmp/
+/test.md

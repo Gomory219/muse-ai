@@ -18,13 +18,13 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void testGenerateCodeAndSave() {
-        File file = aiCodeGeneratorFacade.generateCodeAndSave("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE);
+        File file = aiCodeGeneratorFacade.generateCodeAndSave("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE, 1L);
         assert file != null;
     }
 
     @Test
     void generateCodeAndSaveStreaming() {
-        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE);
+        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE, 2L);
         stringFlux.doOnNext(System.out::print).doOnComplete(System.out::println).blockLast();
     }
 }

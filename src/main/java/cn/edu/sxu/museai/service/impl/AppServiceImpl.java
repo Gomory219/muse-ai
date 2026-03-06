@@ -1,24 +1,40 @@
 package cn.edu.sxu.museai.service.impl;
 
 import cn.edu.sxu.museai.constant.AppConstant;
-import cn.edu.sxu.museai.entity.App;
+import cn.edu.sxu.museai.core.AiCodeGeneratorFacade;
+import cn.edu.sxu.museai.exception.BusinessException;
+import cn.edu.sxu.museai.model.dto.app.AppAddRequest;
+import cn.edu.sxu.museai.model.dto.app.AppNameUpdateRequest;
+import cn.edu.sxu.museai.model.dto.app.AppQueryRequest;
+import cn.edu.sxu.museai.model.dto.app.AppUpdateRequest;
+import cn.edu.sxu.museai.model.entity.App;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
 import cn.edu.sxu.museai.mapper.AppMapper;
-import cn.edu.sxu.museai.model.dto.AppAddRequest;
-import cn.edu.sxu.museai.model.dto.AppNameUpdateRequest;
-import cn.edu.sxu.museai.model.dto.AppQueryRequest;
-import cn.edu.sxu.museai.model.dto.AppUpdateRequest;
+import cn.edu.sxu.museai.mapper.UserMapper;
+import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.entity.User;
+import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
+import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.edu.sxu.museai.service.AppService;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IORuntimeException;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+import java.io.File;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用 服务层实现
@@ -26,13 +42,69 @@ import java.util.List;
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
+    @Resource
+    private UserMapper userMapper;
+    @Resource
+    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+
+    @Override
+    public Flux<String> chatToGenApp(String userMessage, Long appId, Long userId) {
+        ThrowUtils.throwIf(StrUtil.isBlank(userMessage), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
+        ThrowUtils.throwIf(appId == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
+        QueryWrapper queryWrapper = QueryWrapper.create();
+        queryWrapper.eq(App::getId, appId);
+        App app = mapper.selectOneByQuery(queryWrapper);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权访问此应用");
+
+        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.MULTI_FILE, appId);
+
+        Map<String, String> e = Map.of("e", "end");
+        return stringFlux.map(chunk -> {
+            Map<String, String> result = Map.of("v", chunk);
+            return JSONUtil.toJsonStr(result);
+        }).concatWithValues(JSONUtil.toJsonStr(e));
+    }
+
+    @Override
+    public String deploy(String appId, Long userId) {
+        ThrowUtils.throwIf(StrUtil.isBlank(appId), ErrorCode.PARAMS_ERROR, "应用id不能为空");
+        QueryWrapper qw = QueryWrapper.create().eq(App::getId, appId);
+        App app = getOne(qw);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权部署此应用");
+
+        String deployKey = app.getDeployKey();
+        if (deployKey == null) {
+            deployKey = RandomUtil.randomString(6);
+        }
+        String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + appId;
+        File sourceDir = new File(sourcePath);
+        ThrowUtils.throwIf(!sourceDir.exists(), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在");
+        String targetPath = AppConstant.APP_BATH_PATH + "/" + RandomUtil.randomString(6) + deployKey;
+        try {
+            FileUtil.copy(sourcePath, targetPath, true);
+        } catch (IORuntimeException e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "部署失败" + e.getMessage());
+        }
+
+        app.setDeployKey(deployKey);
+        app.setDeployedTime(LocalDateTime.now());
+        boolean b = updateById(app);
+        ThrowUtils.throwIf(!b, ErrorCode.OPERATION_ERROR, "部署失败");
+        return AppConstant.CODE_DEPLOY_HOST + "/" + deployKey;
+    }
+
     @Override
     public Long createApp(AppAddRequest appAddRequest, Long userId) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR, "创建请求不能为空");
-        ThrowUtils.throwIf(StrUtil.isBlank(appAddRequest.getInitPrompt()), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
+        String initPrompt = appAddRequest.getInitPrompt();
+        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
 
         App app = App.builder()
-                .initPrompt(appAddRequest.getInitPrompt())
+                .initPrompt(initPrompt)
+                .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
+                .codeGenType(CodeGenTypeEnum.HTML)
                 .userId(userId)
                 .priority(AppConstant.DEFAULT_PRIORITY)
                 .build();
@@ -55,6 +127,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 更新应用名称
         app.setAppName(appNameUpdateRequest.getAppName());
+        app.setEditTime(LocalDateTime.now());
         return updateById(app);
     }
 
@@ -118,7 +191,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public Boolean deleteAppByAdmin(Long id) {
+    public Boolean deleteAppByAdmin(DeleteRequest deleteRequest) {
+        Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
 
         App app = getById(id);
@@ -179,7 +253,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (app == null) {
             return null;
         }
-        return BeanUtil.copyProperties(app, AppVO.class);
+        AppVO appVO = BeanUtil.copyProperties(app, AppVO.class);
+        // 关联查询用户信息
+        if (app.getUserId() != null) {
+            User queryUser = new User();
+            queryUser.setId(app.getUserId());
+            User user = userMapper.selectOneByEntityId(queryUser);
+            if (user != null) {
+                UserVO userVO = BeanUtil.copyProperties(user, UserVO.class);
+                appVO.setUser(userVO);
+            }
+        }
+        return appVO;
     }
 
     /**

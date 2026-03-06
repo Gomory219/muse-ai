@@ -3,10 +3,8 @@ package cn.edu.sxu.museai.controller;
 import cn.edu.sxu.museai.aop.annotations.AuthCheck;
 import cn.edu.sxu.museai.common.BaseResponse;
 import cn.edu.sxu.museai.common.ResultUtils;
-import cn.edu.sxu.museai.model.dto.AppAddRequest;
-import cn.edu.sxu.museai.model.dto.AppNameUpdateRequest;
-import cn.edu.sxu.museai.model.dto.AppQueryRequest;
-import cn.edu.sxu.museai.model.dto.AppUpdateRequest;
+import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.dto.app.*;
 import cn.edu.sxu.museai.model.entity.User;
 import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
@@ -14,7 +12,9 @@ import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -29,6 +29,19 @@ public class AppController {
     private final AppService appService;
     private final UserService userService;
 
+    @PostMapping(value = "/chat",  produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> chatToGenApp(@RequestBody AppChatRequest appChatRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return appService.chatToGenApp(appChatRequest.getUserMessage(), appChatRequest.getAppId(), loginUser.getId());
+    }
+
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String path = appService.deploy(appDeployRequest.getAppId() ,loginUser.getId());
+
+        return null;
+    }
     /**
      * 普通用户根据提示词创建应用
      * @param appAddRequest 应用创建请求
@@ -36,6 +49,7 @@ public class AppController {
      * @return 应用id
      */
     @PostMapping("/create")
+    @AuthCheck(UserRoleEnum.USER)
     public BaseResponse<Long> createApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         Long appId = appService.createApp(appAddRequest, loginUser.getId());
@@ -48,6 +62,7 @@ public class AppController {
      * @param request http请求
      * @return 是否成功
      */
+    @AuthCheck(UserRoleEnum.USER)
     @PostMapping("/update/name")
     public BaseResponse<Boolean> updateAppName(@RequestBody AppNameUpdateRequest appNameUpdateRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -61,6 +76,7 @@ public class AppController {
      * @param request http请求
      * @return 是否成功
      */
+    @AuthCheck(UserRoleEnum.USER)
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteApp(@RequestParam("id") Long id, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -74,6 +90,7 @@ public class AppController {
      * @param request http请求
      * @return 应用详情
      */
+    @AuthCheck(UserRoleEnum.USER)
     @GetMapping("/get")
     public BaseResponse<AppVO> getAppDetail(@RequestParam("id") Long id, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -87,6 +104,7 @@ public class AppController {
      * @param request http请求
      * @return 应用列表
      */
+    @AuthCheck(UserRoleEnum.USER)
     @GetMapping("/list/my")
     public BaseResponse<List<AppVO>> listMyApps(AppQueryRequest appQueryRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -107,13 +125,13 @@ public class AppController {
 
     /**
      * 管理员删除任意应用
-     * @param id 应用id
+     * @param deleteRequest 应用id
      * @return 是否成功
      */
     @AuthCheck(UserRoleEnum.ADMIN)
     @PostMapping("/admin/delete")
-    public BaseResponse<Boolean> deleteAppByAdmin(@RequestParam("id") Long id) {
-        Boolean result = appService.deleteAppByAdmin(id);
+    public BaseResponse<Boolean> deleteAppByAdmin(@RequestBody DeleteRequest deleteRequest) {
+        Boolean result = appService.deleteAppByAdmin(deleteRequest);
         return ResultUtils.success(result);
     }
 

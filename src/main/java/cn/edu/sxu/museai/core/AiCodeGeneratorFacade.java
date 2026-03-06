@@ -30,13 +30,13 @@ public class AiCodeGeneratorFacade {
      * @param codeGenTypeEnum 代码生成类型枚举，决定生成单文件还是多文件
      * @return 生成的代码文件对象
      */
-    public File generateCodeAndSave(String userMessage, CodeGenTypeEnum codeGenTypeEnum) {
+    public File generateCodeAndSave(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         Object codeResult = switch (codeGenTypeEnum) {
             case HTML -> aiService.generateSingleFile(userMessage);
             case MULTI_FILE -> aiService.generateMultiFile(userMessage);
         };
-        return CodeFileSaverExecutor.saveFile(codeResult, codeGenTypeEnum);
+        return CodeFileSaverExecutor.saveFile(codeResult, codeGenTypeEnum, appId);
     }
 
     /**
@@ -45,13 +45,13 @@ public class AiCodeGeneratorFacade {
      * @param codeGenTypeEnum 代码生成类型枚举，决定生成单文件还是多文件
      * @return AI输出流
      */
-    public Flux<String> generateCodeAndSaveStreaming(String userMessage, CodeGenTypeEnum codeGenTypeEnum) {
+    public Flux<String> generateCodeAndSaveStreaming(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         Flux<String> codeFlux = switch (codeGenTypeEnum) {
             case HTML -> aiService.generateSingleFileStreaming(userMessage);
             case MULTI_FILE -> aiService.generateMultiFileStreaming(userMessage);
         };
-        return processFileSave(codeFlux, codeGenTypeEnum);
+        return processFileSave(codeFlux, codeGenTypeEnum, appId);
     }
 
     /**
@@ -60,12 +60,12 @@ public class AiCodeGeneratorFacade {
      * @param codeGenTypeEnum 代码生成类型
      * @return 处理过后的流
      */
-    private Flux<String> processFileSave(Flux<String> codeFlux, CodeGenTypeEnum codeGenTypeEnum) {
+    private Flux<String> processFileSave(Flux<String> codeFlux, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         StringBuilder sb = new StringBuilder();
         return codeFlux.doOnNext(sb::append).doOnComplete(() -> {
             try {
                 Object codeResult = CodeParserExecutor.parse(sb.toString(), codeGenTypeEnum);
-                File file = CodeFileSaverExecutor.saveFile(codeResult, codeGenTypeEnum);
+                File file = CodeFileSaverExecutor.saveFile(codeResult, codeGenTypeEnum, appId);
                 log.info("文件保存路径: {}",file.getAbsolutePath());
             } catch (Exception e) {
                 log.error("文件保存失败: {}", e.getMessage());

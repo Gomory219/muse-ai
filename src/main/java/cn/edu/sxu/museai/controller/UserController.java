@@ -6,27 +6,21 @@ import cn.edu.sxu.museai.common.ResultUtils;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
 import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.dto.user.*;
 import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.LoginUserVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.StrUtil;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.beans.factory.annotation.Autowired;
 import cn.edu.sxu.museai.model.entity.User;
 import cn.edu.sxu.museai.service.UserService;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.sql.DataSource;
 import java.util.List;
 
 /**
@@ -113,5 +107,4 @@ public class UserController {
         boolean b = userService.removeById(deleteRequest.getId());
         return ResultUtils.success(b);
     }
-
 }

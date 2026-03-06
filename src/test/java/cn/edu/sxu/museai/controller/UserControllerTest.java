@@ -1,7 +1,7 @@
 package cn.edu.sxu.museai.controller;
 
-import cn.edu.sxu.museai.constant.UserConstant;
 import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.dto.user.*;
 import cn.edu.sxu.museai.model.entity.User;
 import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.LoginUserVO;

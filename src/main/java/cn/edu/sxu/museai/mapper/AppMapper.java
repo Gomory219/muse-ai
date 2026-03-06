@@ -1,7 +1,7 @@
 package cn.edu.sxu.museai.mapper;
 
 import com.mybatisflex.core.BaseMapper;
-import cn.edu.sxu.museai.entity.App;
+import cn.edu.sxu.museai.model.entity.App;
 
 /**
  * 应用 映射层。

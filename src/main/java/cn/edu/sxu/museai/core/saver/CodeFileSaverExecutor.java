@@ -13,11 +13,11 @@ public class CodeFileSaverExecutor {
     private static final CodeFileSaverTemplate<HtmlCodeResult> htmlCodeFileSaverTemplate = new HtmlCodeFileSaverTemplate();
     private static final CodeFileSaverTemplate<MultiFileResult> multiFileSaverTemplate = new MultiFileSaverTemplate();
 
-    public static File saveFile(Object codeResult, CodeGenTypeEnum codeGenTypeEnum) {
+    public static File saveFile(Object codeResult, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "codeGenTypeEnum is null");
         return switch (codeGenTypeEnum) {
-            case HTML -> htmlCodeFileSaverTemplate.saveCode((HtmlCodeResult) codeResult);
-            case MULTI_FILE -> multiFileSaverTemplate.saveCode((MultiFileResult) codeResult);
+            case HTML -> htmlCodeFileSaverTemplate.saveCode((HtmlCodeResult) codeResult, appId);
+            case MULTI_FILE -> multiFileSaverTemplate.saveCode((MultiFileResult) codeResult, appId);
         };
     }
 }
