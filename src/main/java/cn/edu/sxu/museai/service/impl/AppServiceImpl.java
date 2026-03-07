@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.service.impl;
 
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.constant.AppConstant;
 import cn.edu.sxu.museai.core.AiCodeGeneratorFacade;
 import cn.edu.sxu.museai.exception.BusinessException;
@@ -19,15 +20,18 @@ import cn.edu.sxu.museai.model.vo.AppVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.edu.sxu.museai.service.AppService;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.exceptions.UtilException;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.ZipUtil;
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -35,11 +39,13 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 应用 服务层实现
  */
 @Service
+@Slf4j
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
     @Resource
@@ -63,7 +69,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return stringFlux.map(chunk -> {
             Map<String, String> result = Map.of("v", chunk);
             return JSONUtil.toJsonStr(result);
-        }).concatWithValues(JSONUtil.toJsonStr(e));
+        }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
+            log.info("用户取消生成代码");
+        });
     }
 
     @Override
@@ -81,9 +89,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + appId;
         File sourceDir = new File(sourcePath);
         ThrowUtils.throwIf(!sourceDir.exists(), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在");
-        String targetPath = AppConstant.APP_BATH_PATH + "/" + RandomUtil.randomString(6) + deployKey;
+        String targetPath = AppConstant.APP_BATH_PATH + "/" + deployKey;
+        File targetDir = new File(targetPath);
         try {
-            FileUtil.copy(sourcePath, targetPath, true);
+            FileUtil.copyContent(sourceDir, targetDir, true);
         } catch (IORuntimeException e) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "部署失败" + e.getMessage());
         }
@@ -96,6 +105,32 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
+    public String downloadApp(Long id, Long userId) {
+        App app = getById(id);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权下载此应用");
+
+        String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + id;
+        ThrowUtils.throwIf(!FileUtil.exist(sourcePath), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在");
+
+        String basePath = AppConstant.CODE_DOWNLOAD_PATH;
+        String uri = "/" + id + ".zip";
+        String targetPath = basePath + uri;
+        try {
+            ZipUtil.zip(sourcePath, targetPath);
+        } catch (UtilException e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "下载失败" + e.getMessage());
+        }
+        return uri;
+    }
+
+    @Override
+    public Boolean pinApp(Long appId) {
+        App app = App.builder().id(appId).priority(AppConstant.PIN_PRIORITY).build();
+        return updateById(app);
+    }
+
+    @Override
     public Long createApp(AppAddRequest appAddRequest, Long userId) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR, "创建请求不能为空");
         String initPrompt = appAddRequest.getInitPrompt();
@@ -104,7 +139,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = App.builder()
                 .initPrompt(initPrompt)
                 .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
-                .codeGenType(CodeGenTypeEnum.HTML)
+                .codeGenType(CodeGenTypeEnum.MULTI_FILE)
                 .userId(userId)
                 .priority(AppConstant.DEFAULT_PRIORITY)
                 .build();
@@ -155,7 +190,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public List<AppVO> listUserApps(AppQueryRequest appQueryRequest, Long userId) {
+    public PageResult<AppVO> listUserApps(AppQueryRequest appQueryRequest, Long userId) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
 
@@ -164,13 +199,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         queryWrapper.eq(App::getUserId, userId);
 
         Page<App> page = page(appQueryRequest.toPage(), queryWrapper);
-        return page.getRecords().stream()
-                .map(this::getAppVO)
-                .toList();
+        List<AppVO> list = page.getRecords().stream().map(this::getAppVO).toList();
+        return PageResult.page(page, list);
     }
 
     @Override
-    public List<AppVO> listFeaturedApps(AppQueryRequest appQueryRequest) {
+    public PageResult<AppVO> listFeaturedApps(AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
         QueryWrapper queryWrapper = QueryWrapper.create();
@@ -179,15 +213,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (StrUtil.isNotBlank(appQueryRequest.getAppName())) {
             queryWrapper.like(App::getAppName, appQueryRequest.getAppName());
         }
+        queryWrapper.ge(App::getPriority, AppConstant.PIN_PRIORITY);
 
         // 按优先级降序排序
         queryWrapper.orderBy(App::getPriority, false)
                 .orderBy(App::getCreateTime, false);
 
         Page<App> page = page(appQueryRequest.toPage(), queryWrapper);
-        return page.getRecords().stream()
-                .map(this::getAppVO)
-                .toList();
+        List<AppVO> list = page.getRecords().stream().map(this::getAppVO).toList();
+        return PageResult.page(page, list);
     }
 
     @Override
@@ -227,15 +261,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public List<AppVO> listAppsByAdmin(AppQueryRequest appQueryRequest) {
+    public PageResult<AppVO> listAppsByAdmin(AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
         QueryWrapper queryWrapper = buildQueryWrapper(appQueryRequest);
 
         Page<App> page = page(appQueryRequest.toPage(), queryWrapper);
-        return page.getRecords().stream()
-                .map(this::getAppVO)
-                .toList();
+        List<AppVO> list = page.getRecords().stream().map(this::getAppVO).toList();
+        return PageResult.page(page, list);
     }
 
     @Override
@@ -285,7 +318,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (appQueryRequest.getUserId() != null) {
             queryWrapper.eq(App::getUserId, appQueryRequest.getUserId());
         }
-        if (StrUtil.isNotBlank(appQueryRequest.getCodeGenType())) {
+        if (appQueryRequest.getCodeGenType() != null) {
             queryWrapper.eq(App::getCodeGenType, appQueryRequest.getCodeGenType());
         }
         if (appQueryRequest.getMinPriority() != null) {

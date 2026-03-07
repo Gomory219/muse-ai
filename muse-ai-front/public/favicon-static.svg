@@ -33,10 +33,8 @@
     <!-- M 字母 -->
     <text x="-16" y="0" font-family="monospace" font-size="48" fill="url(#greenGrad)" font-weight="400" filter="url(#glow)">M</text>
 
-    <!-- 光标 -->
-    <rect x="18" y="-4" width="20" height="6" fill="#00d26a">
-      <animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite"/>
-    </rect>
+    <!-- 光标 - 无动画，常亮 -->
+    <rect x="18" y="-4" width="20" height="6" fill="#00d26a" opacity="1"/>
 
     <!-- 右尖括号 -->
     <text x="38" y="0" font-family="monospace" font-size="56" fill="#444444" font-weight="bold">&gt;</text>

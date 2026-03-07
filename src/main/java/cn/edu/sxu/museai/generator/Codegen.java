@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class Codegen {
 
-    private static String[] generateTables = new String[]{"app"};
+    private static String[] generateTables = new String[]{"history"};
 
     public static void main(String[] args) {
         Dict dict = YamlUtil.loadByPath("application.yaml");

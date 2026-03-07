@@ -58,7 +58,7 @@ export async function list(
   params: API.listParams,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponseListUserVO>('/user/list', {
+  return request<API.BaseResponsePageResultUserVO>('/user/list', {
     method: 'GET',
     params: {
       ...params,

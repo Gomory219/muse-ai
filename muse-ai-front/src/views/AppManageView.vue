@@ -1,28 +1,33 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { SearchOutlined } from '@ant-design/icons-vue'
-import {
-  list,
-  save,
-  update,
-  deleteUsingPost,
-  getVo,
-} from '@/api/userController'
+import { StarFilled, StarOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { listAppsByAdmin, deleteAppByAdmin, updateAppByAdmin, pinApp } from '@/api/appController'
 
-const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '账号', dataIndex: 'userAccount', key: 'userAccount', width: 140 },
-  { title: '用户名', dataIndex: 'userName', key: 'userName', width: 120 },
-  { title: '头像', dataIndex: 'userAvatar', key: 'userAvatar', width: 90, align: 'center' },
-  { title: '角色', dataIndex: 'userRole', key: 'userRole', width: 100, align: 'center' },
-  { title: '简介', dataIndex: 'userProfile', key: 'userProfile', width: 200 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 220, align: 'center' },
-]
-
-const dataSource = ref<API.UserVO[]>([])
+const dataSource = ref<API.AppVO[]>([])
 const loading = ref(false)
+
+// 点击外部关闭下拉框的处理器
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.custom-dropdown')) {
+    codeTypeDropdownOpen.value = false
+  }
+}
+
+// 编辑应用弹窗
+const modalVisible = ref(false)
+const modalLoading = ref(false)
+const editingApp = ref<API.AppVO | null>(null)
+
+const appForm = ref({
+  id: undefined as number | undefined,
+  appName: '',
+})
+
+// 详情弹窗
+const detailVisible = ref(false)
+const detailApp = ref<API.AppVO | null>(null)
 
 // 分页
 const pagination = ref({
@@ -39,112 +44,229 @@ const jumpPageInput = ref('')
 
 // 搜索条件
 const searchForm = ref({
-  userName: '',
-  userRole: '',
+  appName: '',
+  userId: '',
+  codeGenType: '',
+  onlyFeatured: false,
 })
 
-// 角色下拉框状态
-const roleDropdownOpen = ref(false)
+// 代码类型下拉框状态
+const codeTypeDropdownOpen = ref(false)
 
-// 角色选项
-const roleOptions = [
-  { label: '全部角色', value: '' },
-  { label: '普通用户', value: 'user' },
-  { label: '管理员', value: 'admin' },
+// 代码类型选项
+const codeGenTypeOptions = [
+  { label: '全部类型', value: '' },
+  { label: '单文件', value: 'single' },
+  { label: '多文件', value: 'multi' },
 ]
 
-// 切换角色下拉框
-const toggleRoleDropdown = () => {
-  roleDropdownOpen.value = !roleDropdownOpen.value
+// 切换代码类型下拉框
+const toggleCodeTypeDropdown = () => {
+  codeTypeDropdownOpen.value = !codeTypeDropdownOpen.value
 }
 
-// 选择角色
-const selectRole = (value: string) => {
-  searchForm.value.userRole = value
-  roleDropdownOpen.value = false
+// 选择代码类型
+const selectCodeType = (value: string) => {
+  searchForm.value.codeGenType = value
+  codeTypeDropdownOpen.value = false
 }
 
-// 获取当前选中的角色标签
-const selectedRoleLabel = () => {
-  const option = roleOptions.find(opt => opt.value === searchForm.value.userRole)
-  return option ? option.label : '全部角色'
+// 获取当前选中的代码类型标签
+const selectedCodeTypeLabel = () => {
+  const option = codeGenTypeOptions.find(opt => opt.value === searchForm.value.codeGenType)
+  return option ? option.label : '全部类型'
 }
 
-// 点击外部关闭下拉框的处理器
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  if (!target.closest('.custom-dropdown')) {
-    roleDropdownOpen.value = false
-  }
-}
-
-// 添加/编辑用户弹窗
-const modalVisible = ref(false)
-const modalTitle = computed(() => (editingUser.value?.id ? '编辑用户' : '添加用户'))
-const editingUser = ref<API.UserVO | null>(null)
-const modalLoading = ref(false)
-
-const userForm = ref<API.UserVO>({
-  id: undefined,
-  userAccount: '',
-  userName: '',
-  userAvatar: '',
-  userProfile: '',
-  userRole: 'user',
-  createTime: '',
-})
-
-// 详情弹窗
-const detailVisible = ref(false)
-const detailUser = ref<API.UserVO | null>(null)
-
-// 获取用户列表
-const fetchUsers = async () => {
+// 获取应用列表
+const fetchApps = async () => {
   loading.value = true
   try {
-    const queryParams: API.UserQueryRequest = {
+    const queryParams: API.AppQueryRequest = {
       pageNum: pagination.value.current,
       pageSize: pagination.value.pageSize,
     }
 
     // 添加搜索条件
-    if (searchForm.value.userName) {
-      queryParams.userName = searchForm.value.userName
+    if (searchForm.value.appName) {
+      queryParams.appName = searchForm.value.appName
     }
-    if (searchForm.value.userRole) {
-      queryParams.userRole = searchForm.value.userRole as 'user' | 'admin'
+    if (searchForm.value.userId) {
+      queryParams.userId = Number(searchForm.value.userId)
+    }
+    if (searchForm.value.codeGenType) {
+      // 转换为后端期望的值
+      queryParams.codeGenType = searchForm.value.codeGenType === 'single' ? 'HTML' : 'MULTI_FILE'
+    }
+    // 只看精选：priority > 0 的应用
+    if (searchForm.value.onlyFeatured) {
+      queryParams.minPriority = 1
     }
 
-    const res = await list({
-      userQueryRequest: queryParams,
+    const res = await listAppsByAdmin({
+      appQueryRequest: queryParams,
     })
     if (res.data.code === 0 && res.data.data) {
       dataSource.value = res.data.data.list || []
       pagination.value.total = res.data.data.total || 0
     } else {
-      message.error(res.data.message || '获取用户列表失败')
+      message.error(res.data.message || '获取应用列表失败')
     }
   } catch (error) {
-    message.error('获取用户列表失败')
+    message.error('获取应用列表失败')
   } finally {
     loading.value = false
   }
 }
 
+// 切换精选状态
+const toggleFeatured = async (app: API.AppVO) => {
+  if (!app.id) return
+
+  const newFeaturedStatus = !isFeatured(app)
+  const oldPriority = app.priority
+
+  // 先乐观更新本地状态
+  app.priority = newFeaturedStatus ? 1 : 0
+
+  try {
+    const res = await pinApp({
+      appId: app.id,
+      appPinRequest: {
+        appId: app.id,
+      },
+    })
+    if (res.data.code === 0) {
+      message.success(newFeaturedStatus ? '已设为精选' : '已取消精选')
+    } else {
+      // 失败则回滚状态
+      app.priority = oldPriority
+      message.error(res.data.message || '操作失败')
+    }
+  } catch (error) {
+    // 失败则回滚状态
+    app.priority = oldPriority
+    message.error('操作失败')
+  }
+}
+
+// 判断是否精选
+const isFeatured = (app: API.AppVO) => {
+  return app.priority !== undefined && app.priority > 0
+}
+
+// 打开编辑弹窗
+const openEditModal = (app: API.AppVO) => {
+  editingApp.value = { ...app }
+  appForm.value = {
+    id: app.id,
+    appName: app.appName || '',
+  }
+  modalVisible.value = true
+}
+
+// 打开详情弹窗
+const openDetailModal = (app: API.AppVO) => {
+  detailApp.value = app
+  detailVisible.value = true
+}
+
+// 保存应用（编辑名称）
+const handleSave = async () => {
+  if (!appForm.value.appName) {
+    message.warning('应用名称不能为空')
+    return
+  }
+  if (!appForm.value.id) {
+    message.error('应用 ID 不存在')
+    return
+  }
+
+  modalLoading.value = true
+  try {
+    const res = await updateAppByAdmin({
+      id: appForm.value.id,
+      appName: appForm.value.appName,
+    })
+    if (res.data.code === 0) {
+      message.success('修改成功')
+      modalVisible.value = false
+      fetchApps()
+    } else {
+      message.error(res.data.message || '操作失败')
+    }
+  } catch (error) {
+    message.error('操作失败')
+  } finally {
+    modalLoading.value = false
+  }
+}
+
+// 删除应用
+const handleDelete = (app: API.AppVO) => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除应用 "${app.appName || '未命名应用'}" 吗？此操作不可恢复。`,
+    okText: '确定',
+    okButtonProps: { danger: true },
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        const res = await deleteAppByAdmin({ id: app.id })
+        if (res.data.code === 0) {
+          message.success('删除成功')
+          fetchApps()
+        } else {
+          message.error(res.data.message || '删除失败')
+        }
+      } catch (error) {
+        message.error('删除失败')
+      }
+    },
+  })
+}
+
 // 搜索
 const handleSearch = () => {
   pagination.value.current = 1
-  fetchUsers()
+  fetchApps()
 }
 
 // 重置搜索
 const handleReset = () => {
   searchForm.value = {
-    userName: '',
-    userRole: '',
+    appName: '',
+    userId: '',
+    codeGenType: '',
+    onlyFeatured: false,
   }
   pagination.value.current = 1
-  fetchUsers()
+  fetchApps()
+}
+
+// 分页变化
+const handlePageChange = (page: number) => {
+  pagination.value.current = page
+  fetchApps()
+}
+
+// 每页条数变化
+const handlePageSizeChange = (size: number) => {
+  pagination.value.pageSize = size
+  pagination.value.current = 1
+  fetchApps()
+}
+
+// 跳转到指定页
+const handleJumpToPage = () => {
+  const page = parseInt(jumpPageInput.value)
+  if (isNaN(page)) return
+  const total = Math.ceil(pagination.value.total / pagination.value.pageSize)
+  if (page < 1 || page > total) {
+    message.warning(`请输入 1 到 ${total} 之间的页码`)
+    return
+  }
+  jumpPageInput.value = ''
+  handlePageChange(page)
 }
 
 // 计算总页数
@@ -194,154 +316,6 @@ const displayedPages = computed(() => {
   return pages
 })
 
-// 分页变化
-const handlePageChange = (page: number) => {
-  if (page < 1 || page > totalPages.value) return
-  pagination.value.current = page
-  fetchUsers()
-}
-
-// 每页条数变化
-const handlePageSizeChange = (size: number) => {
-  pagination.value.pageSize = size
-  pagination.value.current = 1
-  fetchUsers()
-}
-
-// 跳转到指定页
-const handleJumpToPage = () => {
-  const page = parseInt(jumpPageInput.value)
-  if (isNaN(page)) return
-  if (page < 1 || page > totalPages.value) {
-    message.warning(`请输入 1 到 ${totalPages.value} 之间的页码`)
-    return
-  }
-  jumpPageInput.value = ''
-  handlePageChange(page)
-}
-
-// 打开添加用户弹窗
-const openAddModal = () => {
-  editingUser.value = null
-  userForm.value = {
-    id: undefined,
-    userAccount: '',
-    userName: '',
-    userAvatar: '',
-    userProfile: '',
-    userRole: 'user',
-    createTime: '',
-  }
-  modalVisible.value = true
-}
-
-// 打开编辑用户弹窗
-const openEditModal = async (user: API.UserVO) => {
-  // 先使用表格数据填充表单
-  editingUser.value = { ...user }
-  userForm.value = { ...user }
-  modalVisible.value = true
-
-  // 尝试获取更详细的用户信息
-  try {
-    const res = await getVo({ id: user.id! })
-    if (res.data.code === 0 && res.data.data) {
-      editingUser.value = res.data.data
-      userForm.value = { ...res.data.data }
-    }
-  } catch (error) {
-    // 忽略错误，使用表格数据
-    console.log('获取详情失败，使用表格数据', error)
-  }
-}
-
-// 打开详情弹窗
-const openDetailModal = async (user: API.UserVO) => {
-  // 直接使用表格中的数据显示详情
-  detailUser.value = user
-  detailVisible.value = true
-
-  // 尝试获取更详细的用户信息
-  try {
-    const res = await getVo({ id: user.id! })
-    if (res.data.code === 0 && res.data.data) {
-      detailUser.value = res.data.data
-    }
-  } catch (error) {
-    // 忽略错误，使用表格数据
-    console.log('获取详情失败，使用表格数据', error)
-  }
-}
-
-// 保存用户（添加或编辑）
-const handleSave = async () => {
-  if (!userForm.value.userAccount || !userForm.value.userName) {
-    message.warning('账号和用户名不能为空')
-    return
-  }
-
-  modalLoading.value = true
-  try {
-    let res
-    if (editingUser.value?.id) {
-      // 编辑
-      res = await update({
-        id: editingUser.value.id,
-        userName: userForm.value.userName,
-        userAvatar: userForm.value.userAvatar,
-        userProfile: userForm.value.userProfile,
-        userRole: userForm.value.userRole,
-      })
-    } else {
-      // 添加
-      res = await save({
-        userAddRequest: {
-          userAccount: userForm.value.userAccount,
-          userName: userForm.value.userName,
-          userAvatar: userForm.value.userAvatar,
-          userProfile: userForm.value.userProfile,
-          userRole: userForm.value.userRole,
-        },
-      })
-    }
-
-    if (res.data.code === 0) {
-      message.success(editingUser.value?.id ? '修改成功' : '添加成功')
-      modalVisible.value = false
-      fetchUsers()
-    } else {
-      message.error(res.data.message || '操作失败')
-    }
-  } catch (error) {
-    message.error('操作失败')
-  } finally {
-    modalLoading.value = false
-  }
-}
-
-// 删除用户
-const handleDelete = (user: API.UserVO) => {
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除用户 "${user.userName}" 吗？`,
-    okText: '确定',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        const res = await deleteUsingPost({ id: String(user.id) })
-        if (res.data.code === 0) {
-          message.success('删除成功')
-          fetchUsers()
-        } else {
-          message.error(res.data.message || '删除失败')
-        }
-      } catch (error) {
-        message.error('删除失败')
-      }
-    },
-  })
-}
-
 // 格式化时间
 const formatTime = (timeStr?: string) => {
   if (!timeStr) return ''
@@ -355,8 +329,39 @@ const formatTime = (timeStr?: string) => {
   })
 }
 
+// 截断文本
+const truncateText = (text: string, maxLength: number) => {
+  if (!text) return 'null'
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
+// 获取代码类型标签
+const getCodeTypeLabel = (type?: string) => {
+  if (!type) return '-'
+  const t = type.toUpperCase()
+  if (t === 'HTML') return '单文件'
+  if (t === 'MULTI_FILE') return '多文件'
+  // 兼容旧值
+  if (t.includes('SINGLE') || t.includes('ONE')) return '单文件'
+  if (t.includes('MULTI')) return '多文件'
+  return '-'
+}
+
+// 获取代码类型样式类
+const getCodeTypeClass = (type?: string) => {
+  if (!type) return ''
+  const t = type.toUpperCase()
+  if (t === 'HTML') return 'type-single'
+  if (t === 'MULTI_FILE') return 'type-multi'
+  // 兼容旧值
+  if (t.includes('SINGLE') || t.includes('ONE')) return 'type-single'
+  if (t.includes('MULTI')) return 'type-multi'
+  return ''
+}
+
 onMounted(() => {
-  fetchUsers()
+  fetchApps()
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -366,12 +371,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="user-manage-container">
+  <div class="app-manage-container">
     <!-- 页面标题 -->
     <div class="page-header">
       <h1 class="page-title">
         <span class="title-prompt">$</span>
-        <span class="title-text">user_manage</span>
+        <span class="title-text">app_manage</span>
       </h1>
     </div>
 
@@ -379,34 +384,51 @@ onUnmounted(() => {
     <div class="filter-panel">
       <div class="filter-row">
         <div class="filter-item">
-          <label class="filter-label">用户名</label>
+          <label class="filter-label">应用名称</label>
           <input
-            v-model="searchForm.userName"
+            v-model="searchForm.appName"
             type="text"
             class="filter-input"
-            placeholder="搜索用户名..."
+            placeholder="搜索应用名称..."
             @keydown.enter="handleSearch"
           />
         </div>
         <div class="filter-item">
-          <label class="filter-label">角色</label>
-          <div class="custom-dropdown" :class="{ open: roleDropdownOpen }">
-            <div class="dropdown-trigger" @click="toggleRoleDropdown">
-              <span>{{ selectedRoleLabel() }}</span>
-              <span class="dropdown-arrow" :class="{ rotate: roleDropdownOpen }"></span>
+          <label class="filter-label">创建者ID</label>
+          <input
+            v-model="searchForm.userId"
+            type="number"
+            class="filter-input no-spinner"
+            placeholder="输入用户ID..."
+            @keydown.enter="handleSearch"
+          />
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">代码类型</label>
+          <div class="custom-dropdown" :class="{ open: codeTypeDropdownOpen }">
+            <div class="dropdown-trigger" @click="toggleCodeTypeDropdown">
+              <span>{{ selectedCodeTypeLabel() }}</span>
+              <span class="dropdown-arrow" :class="{ rotate: codeTypeDropdownOpen }"></span>
             </div>
-            <div class="dropdown-menu" v-show="roleDropdownOpen">
+            <div class="dropdown-menu" v-show="codeTypeDropdownOpen">
               <div
-                v-for="(opt, index) in roleOptions"
+                v-for="(opt, index) in codeGenTypeOptions"
                 :key="opt.value"
                 class="dropdown-item"
                 :style="{ animationDelay: `${index * 0.05}s` }"
-                @click="selectRole(opt.value)"
+                @click="selectCodeType(opt.value)"
               >
                 {{ opt.label }}
               </div>
             </div>
           </div>
+        </div>
+        <div class="filter-item filter-checkbox">
+          <label class="featured-toggle" :class="{ active: searchForm.onlyFeatured }">
+            <input v-model="searchForm.onlyFeatured" type="checkbox" />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">只看精选</span>
+          </label>
         </div>
         <div class="filter-actions">
           <button class="filter-btn filter-btn-primary" @click="handleSearch">
@@ -427,58 +449,65 @@ onUnmounted(() => {
           <span class="table-count">{{ pagination.total }}</span>
           <span class="table-label">records</span>
         </div>
-        <button class="btn-primary" @click="openAddModal">
-          <span class="btn-bracket">&lt;</span>
-          <span>add_user</span>
-          <span class="btn-bracket">/&gt;</span>
-        </button>
       </div>
 
       <div class="table-container" :class="{ loading: loading }">
         <table class="data-table">
           <thead>
             <tr>
+              <th class="col-featured">精选</th>
               <th class="col-id">ID</th>
-              <th class="col-account">账号</th>
-              <th class="col-name">用户名</th>
-              <th class="col-avatar">头像</th>
-              <th class="col-role">角色</th>
-              <th class="col-profile">简介</th>
+              <th class="col-name">应用名称</th>
+              <th class="col-user">创建者</th>
+              <th class="col-type">代码类型</th>
+              <th class="col-prompt">初始需求</th>
               <th class="col-time">创建时间</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
           <tbody v-if="!loading">
-            <tr v-for="user in dataSource" :key="user.id" class="table-row">
+            <tr v-for="app in dataSource" :key="app.id" class="table-row">
+              <td class="col-featured">
+                <button
+                  class="featured-btn"
+                  :class="{ active: isFeatured(app) }"
+                  @click="toggleFeatured(app)"
+                  :title="isFeatured(app) ? '取消精选' : '设为精选'"
+                >
+                  <StarFilled v-if="isFeatured(app)" />
+                  <StarOutlined v-else />
+                </button>
+              </td>
               <td class="col-id">
-                <span class="cell-mono">{{ user.id }}</span>
+                <span class="cell-mono">{{ app.id }}</span>
               </td>
-              <td class="col-account">
-                <span class="cell-mono">{{ user.userAccount }}</span>
-              </td>
-              <td class="col-name">{{ user.userName }}</td>
-              <td class="col-avatar">
-                <div v-if="user.userAvatar" class="avatar-small">
-                  <img :src="user.userAvatar" :alt="user.userName" />
-                </div>
-                <span v-else class="empty-value">null</span>
-              </td>
-              <td class="col-role">
-                <span :class="['role-tag', user.userRole]">
-                  {{ user.userRole === 'admin' ? 'admin' : 'user' }}
+              <td class="col-name">
+                <span class="app-name">
+                  <span v-if="isFeatured(app)" class="featured-badge">精选</span>
+                  {{ app.appName || '未命名应用' }}
                 </span>
               </td>
-              <td class="col-profile">
-                <span class="profile-text">{{ user.userProfile || 'null' }}</span>
+              <td class="col-user">
+                <span class="cell-mono">{{ app.user?.userName || app.userId || '-' }}</span>
+              </td>
+              <td class="col-type">
+                <span class="code-type-badge" :class="getCodeTypeClass(app.codeGenType)">
+                  {{ getCodeTypeLabel(app.codeGenType) }}
+                </span>
+              </td>
+              <td class="col-prompt">
+                <span class="prompt-text" :title="app.initPrompt">
+                  {{ truncateText(app.initPrompt || '', 40) }}
+                </span>
               </td>
               <td class="col-time">
-                <span class="cell-mono cell-time">{{ formatTime(user.createTime) }}</span>
+                <span class="cell-mono cell-time">{{ formatTime(app.createTime) }}</span>
               </td>
               <td class="col-action">
                 <div class="action-buttons">
-                  <button class="action-btn" @click="openDetailModal(user)">view</button>
-                  <button class="action-btn" @click="openEditModal(user)">edit</button>
-                  <button class="action-btn action-danger" @click="handleDelete(user)">del</button>
+                  <button class="action-btn" @click="openDetailModal(app)">view</button>
+                  <button class="action-btn" @click="openEditModal(app)">edit</button>
+                  <button class="action-btn action-danger" @click="handleDelete(app)">del</button>
                 </div>
               </td>
             </tr>
@@ -583,7 +612,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 添加/编辑用户弹窗 -->
+    <!-- 编辑应用弹窗 -->
     <a-modal
       v-model:open="modalVisible"
       title="null"
@@ -594,60 +623,21 @@ onUnmounted(() => {
       <div class="edit-modal">
         <div class="modal-header">
           <span class="modal-prompt">$</span>
-          <span class="modal-title">{{ editingUser?.id ? 'update_user' : 'create_user' }}</span>
+          <span class="modal-title">update_app</span>
         </div>
 
         <div class="modal-form">
           <div class="form-group">
-            <label class="form-label">账号</label>
+            <label class="form-label">应用ID // read_only</label>
+            <div class="form-input-readonly">{{ editingApp?.id }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">应用名称</label>
             <input
-              v-model="userForm.userAccount"
+              v-model="appForm.appName"
               class="form-input"
-              placeholder="输入账号..."
-              :disabled="!!editingUser?.id"
+              placeholder="输入应用名称..."
             />
-          </div>
-          <div class="form-group">
-            <label class="form-label">用户名</label>
-            <input
-              v-model="userForm.userName"
-              class="form-input"
-              placeholder="输入用户名..."
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">头像URL</label>
-            <input
-              v-model="userForm.userAvatar"
-              class="form-input"
-              placeholder="输入头像URL..."
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">角色</label>
-            <div class="role-selector">
-              <div
-                :class="['role-option', { active: userForm.userRole === 'user' }]"
-                @click="userForm.userRole = 'user'"
-              >
-                <span>user</span>
-              </div>
-              <div
-                :class="['role-option', { active: userForm.userRole === 'admin' }]"
-                @click="userForm.userRole = 'admin'"
-              >
-                <span>admin</span>
-              </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">简介</label>
-            <textarea
-              v-model="userForm.userProfile"
-              class="form-textarea"
-              placeholder="输入用户简介..."
-              rows="3"
-            ></textarea>
           </div>
         </div>
 
@@ -663,58 +653,60 @@ onUnmounted(() => {
       </div>
     </a-modal>
 
-    <!-- 用户详情弹窗 -->
+    <!-- 应用详情弹窗 -->
     <a-modal
       v-model:open="detailVisible"
       title="null"
       :footer="null"
       :closable="false"
-      width="420px"
+      width="500px"
     >
       <div class="detail-modal">
         <div class="modal-header">
           <span class="modal-prompt">$</span>
-          <span class="modal-title">user_detail</span>
+          <span class="modal-title">app_detail</span>
           <button class="modal-close" @click="detailVisible = false">×</button>
         </div>
 
-        <div class="detail-content" v-if="detailUser">
+        <div class="detail-content" v-if="detailApp">
           <div class="detail-item">
             <span class="detail-key">id</span>
-            <span class="detail-value">{{ detailUser.id }}</span>
+            <span class="detail-value detail-mono">{{ detailApp.id }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-key">account</span>
-            <span class="detail-value detail-mono">{{ detailUser.userAccount }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-key">username</span>
-            <span class="detail-value">{{ detailUser.userName }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-key">avatar</span>
-            <div class="detail-value">
-              <div v-if="detailUser.userAvatar" class="avatar-large">
-                <img :src="detailUser.userAvatar" :alt="detailUser.userName" />
-              </div>
-              <span v-else class="empty-value">null</span>
-            </div>
-          </div>
-          <div class="detail-item">
-            <span class="detail-key">role</span>
+            <span class="detail-key">app_name</span>
             <span class="detail-value">
-              <span :class="['role-tag', detailUser.userRole]">
-                {{ detailUser.userRole === 'admin' ? 'admin' : 'user' }}
+              <span v-if="isFeatured(detailApp)" class="featured-badge-small">精选</span>
+              {{ detailApp.appName || '未命名应用' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">creator</span>
+            <span class="detail-value">{{ detailApp.user?.userName || detailApp.userId || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">code_type</span>
+            <span class="detail-value">
+              <span class="code-type-badge" :class="getCodeTypeClass(detailApp.codeGenType)">
+                {{ getCodeTypeLabel(detailApp.codeGenType) }}
               </span>
             </span>
           </div>
           <div class="detail-item">
-            <span class="detail-key">profile</span>
-            <span class="detail-value">{{ detailUser.userProfile || 'null' }}</span>
+            <span class="detail-key">priority</span>
+            <span class="detail-value detail-mono">{{ detailApp.priority ?? 0 }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">init_prompt</span>
+            <span class="detail-value prompt-full">{{ detailApp.initPrompt || 'null' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-key">created_at</span>
-            <span class="detail-value detail-mono">{{ detailUser.createTime }}</span>
+            <span class="detail-value detail-mono">{{ detailApp.createTime }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">updated_at</span>
+            <span class="detail-value detail-mono">{{ detailApp.updateTime || 'null' }}</span>
           </div>
         </div>
 
@@ -730,7 +722,7 @@ onUnmounted(() => {
 
 <style scoped>
 /* ===== CSS 变量 ===== */
-.user-manage-container {
+.app-manage-container {
   --bg-primary: #0a0a0a;
   --bg-secondary: #111111;
   --bg-card: #1a1a1a;
@@ -739,6 +731,8 @@ onUnmounted(() => {
   --text-muted: #444444;
   --accent-green: #00d26a;
   --accent-green-dim: rgba(0, 210, 106, 0.1);
+  --accent-gold: #ffd700;
+  --accent-gold-dim: rgba(255, 215, 0, 0.15);
   --border-color: #2a2a2a;
   --border-hover: #00d26a;
   --danger-color: #ff4757;
@@ -756,8 +750,27 @@ onUnmounted(() => {
 .page-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 24px;
   flex-shrink: 0;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.title-prompt {
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+.title-text {
+  color: var(--text-primary);
 }
 
 /* ===== 筛选面板 ===== */
@@ -783,6 +796,11 @@ onUnmounted(() => {
   gap: 6px;
 }
 
+.filter-item.filter-checkbox {
+  justify-content: center;
+  padding-bottom: 4px;
+}
+
 .filter-label {
   font-size: 13px;
   font-weight: 500;
@@ -802,6 +820,17 @@ onUnmounted(() => {
   font-size: 13px;
   outline: none;
   transition: all 0.2s ease;
+}
+
+/* 移除数字输入框的上下箭头 */
+.filter-input.no-spinner::-webkit-inner-spin-button,
+.filter-input.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.filter-input.no-spinner {
+  -moz-appearance: textfield;
 }
 
 .filter-input:focus,
@@ -898,6 +927,60 @@ onUnmounted(() => {
   color: var(--accent-green);
 }
 
+/* 精选切换开关 */
+.featured-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.featured-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background: var(--border-color);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.featured-toggle.active .toggle-slider {
+  background: var(--accent-gold);
+}
+
+.featured-toggle.active .toggle-slider::before {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+.toggle-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.featured-toggle.active .toggle-label {
+  color: var(--accent-gold);
+  font-weight: 500;
+}
+
 .filter-actions {
   display: flex;
   gap: 10px;
@@ -940,24 +1023,6 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 24px;
-  font-weight: 500;
-  margin: 0;
-}
-
-.title-prompt {
-  color: var(--accent-green);
-  font-weight: 600;
-}
-
-.title-text {
-  color: var(--text-primary);
-}
-
 /* ===== 表格容器 ===== */
 .table-wrapper {
   background: var(--bg-card);
@@ -977,38 +1042,7 @@ onUnmounted(() => {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-secondary);
-  gap: 16px;
   flex-shrink: 0;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
-  background: var(--accent-green-dim);
-  border: 1px solid var(--accent-green);
-  border-radius: 6px;
-  color: var(--accent-green);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary:hover {
-  background: var(--accent-green);
-  color: var(--bg-primary);
-}
-
-.btn-bracket {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.btn-primary:hover .btn-bracket {
-  color: var(--bg-primary);
 }
 
 .table-info {
@@ -1101,8 +1135,85 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.profile-text {
-  max-width: 200px;
+.col-featured {
+  width: 60px;
+  text-align: center;
+}
+
+.featured-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  font-size: 16px;
+}
+
+.featured-btn:hover {
+  color: var(--accent-gold);
+  background: var(--accent-gold-dim);
+}
+
+.featured-btn.active {
+  color: var(--accent-gold);
+}
+
+.app-name {
+  color: var(--accent-green);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.featured-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.featured-badge-small {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.code-type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.code-type-badge.type-single {
+  background: rgba(0, 210, 106, 0.1);
+  color: var(--accent-green);
+}
+
+.code-type-badge.type-multi {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--accent-gold);
+}
+
+.prompt-text {
+  max-width: 250px;
   display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1110,59 +1221,12 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
-.empty-value {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-/* 头像 */
-.avatar-small {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent-green);
-}
-
-.avatar-small img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-large {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent-green);
-}
-
-.avatar-large img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 角色标签 */
-.role-tag {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.role-tag.admin {
-  background: rgba(255, 71, 87, 0.15);
-  color: var(--danger-color);
-}
-
-.role-tag.user {
-  background: var(--accent-green-dim);
-  color: var(--accent-green);
+.prompt-full {
+  display: block;
+  max-width: 400px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
 }
 
 /* 操作按钮 */
@@ -1489,8 +1553,7 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
 }
 
-.form-input,
-.form-textarea {
+.form-input {
   width: 100%;
   padding: 10px 14px;
   background: var(--bg-primary);
@@ -1504,53 +1567,22 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-.form-input:focus,
-.form-textarea:focus {
+.form-input:focus {
   border-color: var(--accent-green);
 }
 
-.form-input::placeholder,
-.form-textarea::placeholder {
+.form-input::placeholder {
   color: var(--text-muted);
 }
 
-.form-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.form-textarea {
-  resize: none;
-  line-height: 1.5;
-}
-
-/* 角色选择器 */
-.role-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.role-option {
-  flex: 1;
-  padding: 10px;
+.form-input-readonly {
+  padding: 10px 14px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: var(--text-muted);
+  font-family: inherit;
   font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.role-option:hover {
-  border-color: var(--accent-green);
-}
-
-.role-option.active {
-  background: var(--accent-green-dim);
-  border-color: var(--accent-green);
-  color: var(--accent-green);
 }
 
 .modal-footer {
@@ -1630,11 +1662,13 @@ onUnmounted(() => {
 
 .detail-content {
   padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .detail-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 12px 0;
   border-bottom: 1px solid var(--border-color);
 }
@@ -1648,6 +1682,7 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .detail-value {
@@ -1663,7 +1698,7 @@ onUnmounted(() => {
 
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
-  .user-manage-container {
+  .app-manage-container {
     padding: 20px;
   }
 
@@ -1691,12 +1726,6 @@ onUnmounted(() => {
     min-width: 100%;
   }
 
-  .filter-actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
-  }
-
   .table-footer {
     flex-direction: column;
     align-items: center;
@@ -1714,12 +1743,6 @@ onUnmounted(() => {
 
   .page-numbers {
     display: none;
-  }
-
-  .table-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
   }
 }
 </style>

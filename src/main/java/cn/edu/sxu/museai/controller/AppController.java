@@ -2,6 +2,7 @@ package cn.edu.sxu.museai.controller;
 
 import cn.edu.sxu.museai.aop.annotations.AuthCheck;
 import cn.edu.sxu.museai.common.BaseResponse;
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.common.ResultUtils;
 import cn.edu.sxu.museai.model.dto.*;
 import cn.edu.sxu.museai.model.dto.app.*;
@@ -10,6 +11,7 @@ import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
 import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.UserService;
+import com.mybatisflex.core.paginate.Page;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -35,13 +37,28 @@ public class AppController {
         return appService.chatToGenApp(appChatRequest.getUserMessage(), appChatRequest.getAppId(), loginUser.getId());
     }
 
+    @GetMapping(value = "/download")
+    @AuthCheck(UserRoleEnum.USER)
+    public BaseResponse<String> downloadApp(@RequestParam("id") Long id, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String path = appService.downloadApp(id, loginUser.getId());
+        return ResultUtils.success(path);
+    }
+
     @PostMapping("/deploy")
     public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         String path = appService.deploy(appDeployRequest.getAppId() ,loginUser.getId());
-
-        return null;
+        return ResultUtils.success(path);
     }
+
+    @PostMapping("/admin/pin")
+    @AuthCheck(UserRoleEnum.ADMIN)
+    public BaseResponse<Boolean> pinApp(AppPinRequest appPinRequest) {
+        Boolean result = appService.pinApp(appPinRequest.getAppId());
+        return ResultUtils.success(result);
+    }
+
     /**
      * 普通用户根据提示词创建应用
      * @param appAddRequest 应用创建请求
@@ -106,21 +123,21 @@ public class AppController {
      */
     @AuthCheck(UserRoleEnum.USER)
     @GetMapping("/list/my")
-    public BaseResponse<List<AppVO>> listMyApps(AppQueryRequest appQueryRequest, HttpServletRequest request) {
+    public BaseResponse<PageResult<AppVO>> listMyApps(AppQueryRequest appQueryRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        List<AppVO> appList = appService.listUserApps(appQueryRequest, loginUser.getId());
-        return ResultUtils.success(appList);
+        PageResult<AppVO> page = appService.listUserApps(appQueryRequest, loginUser.getId());
+        return ResultUtils.success(page);
     }
 
     /**
-     * 查询精选应用列表，按优先级排序
+     * 分页查询精选应用列表，按优先级排序
      * @param appQueryRequest 查询请求
-     * @return 应用列表
+     * @return 分页结果
      */
     @GetMapping("/list/featured")
-    public BaseResponse<List<AppVO>> listFeaturedApps(AppQueryRequest appQueryRequest) {
-        List<AppVO> appList = appService.listFeaturedApps(appQueryRequest);
-        return ResultUtils.success(appList);
+    public BaseResponse<PageResult<AppVO>> listFeaturedApps(AppQueryRequest appQueryRequest) {
+        PageResult<AppVO> pageResult = appService.listFeaturedApps(appQueryRequest);
+        return ResultUtils.success(pageResult);
     }
 
     /**
@@ -150,13 +167,13 @@ public class AppController {
     /**
      * 管理员分页查询应用列表
      * @param appQueryRequest 查询请求
-     * @return 应用列表
+     * @return 分页结果
      */
     @AuthCheck(UserRoleEnum.ADMIN)
     @GetMapping("/admin/list")
-    public BaseResponse<List<AppVO>> listAppsByAdmin(AppQueryRequest appQueryRequest) {
-        List<AppVO> appList = appService.listAppsByAdmin(appQueryRequest);
-        return ResultUtils.success(appList);
+    public BaseResponse<PageResult<AppVO>> listAppsByAdmin(AppQueryRequest appQueryRequest) {
+        PageResult<AppVO> pageResult = appService.listAppsByAdmin(appQueryRequest);
+        return ResultUtils.success(pageResult);
     }
 
     /**

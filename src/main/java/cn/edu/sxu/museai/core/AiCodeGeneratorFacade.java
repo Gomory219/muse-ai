@@ -11,6 +11,7 @@ import cn.edu.sxu.museai.core.saver.CodeFileSaverExecutor;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
+import dev.langchain4j.service.TokenStream;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

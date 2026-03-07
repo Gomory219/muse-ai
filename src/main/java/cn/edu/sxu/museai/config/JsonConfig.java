@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 /**
  * Spring MVC Json 配置
  */
-//@JsonComponent
-@Component
+@JsonComponent
+//@Component
 public class JsonConfig {
 
     /**

@@ -11,6 +11,16 @@ public interface AppConstant {
     Integer DEFAULT_PRIORITY = 0;
 
     /**
+     * 精选优先级
+     */
+    Integer PIN_PRIORITY = 99;
+
+    /**
+     * 指定优先级
+     */
+    Integer TOP_PRIORITY = 999;
+
+    /**
      * 代码文件保存路径
      */
     String CODE_BATH_PATH = System.getProperty("user.dir") + "/tmp/code";
@@ -24,4 +34,6 @@ public interface AppConstant {
      * 部署域名
      */
     String CODE_DEPLOY_HOST = "http://localhost";
+
+    String CODE_DOWNLOAD_PATH = System.getProperty("user.dir") + "/tmp/download";
 }

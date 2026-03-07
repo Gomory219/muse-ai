@@ -2,6 +2,7 @@ package cn.edu.sxu.museai.controller;
 
 import cn.edu.sxu.museai.aop.annotations.AuthCheck;
 import cn.edu.sxu.museai.common.BaseResponse;
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.common.ResultUtils;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
@@ -86,9 +87,9 @@ public class UserController {
     }
     @AuthCheck(UserRoleEnum.ADMIN)
     @GetMapping("/list")
-    public BaseResponse<List<UserVO>> list(UserQueryRequest userQueryRequest) {
-        List<UserVO> userVOList = userService.getUserVOList(userQueryRequest);
-        return ResultUtils.success(userVOList);
+    public BaseResponse<PageResult<UserVO>> list(UserQueryRequest userQueryRequest) {
+        PageResult<UserVO> pageResult = userService.getUserVOList(userQueryRequest);
+        return ResultUtils.success(pageResult);
     }
 
     @AuthCheck(UserRoleEnum.ADMIN)

@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.service;
 
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.model.dto.user.UserAddRequest;
 import cn.edu.sxu.museai.model.dto.user.UserQueryRequest;
 import cn.edu.sxu.museai.model.vo.LoginUserVO;
@@ -71,7 +72,7 @@ public interface UserService extends IService<User> {
      */
     UserVO getUserVO(User user);
 
-    List<UserVO> getUserVOList(UserQueryRequest userQueryRequest);
+    PageResult<UserVO> getUserVOList(UserQueryRequest userQueryRequest);
 
     /**
      * 新增用户

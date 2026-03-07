@@ -1,13 +1,70 @@
 declare namespace API {
-  type BaseResponseBoolean = {
+  type AppAddRequest = {
+    initPrompt?: string
+  }
+
+  type AppChatRequest = {
+    userMessage?: string
+    appId?: number
+  }
+
+  type AppDeployRequest = {
+    appId?: string
+  }
+
+  type AppNameUpdateRequest = {
+    id?: number
+    appName?: string
+  }
+
+  type AppPinRequest = {
+    appId?: number
+  }
+
+  type AppQueryRequest = {
+    pageNum?: number
+    pageSize?: number
+    sortField?: string
+    sortOrder?: string
+    id?: number
+    appName?: string
+    userId?: number
+    codeGenType?: 'HTML' | 'MULTI_FILE'
+    minPriority?: number
+    maxPriority?: number
+  }
+
+  type AppUpdateRequest = {
+    id?: number
+    appName?: string
+    cover?: string
+    priority?: number
+  }
+
+  type AppVO = {
+    id?: number
+    appName?: string
+    cover?: string
+    initPrompt?: string
+    codeGenType?: string
+    deployKey?: string
+    deployedTime?: string
+    priority?: number
+    userId?: number
+    user?: UserVO
+    createTime?: string
+    updateTime?: string
+  }
+
+  type BaseResponseAppVO = {
     code?: number
-    data?: boolean
+    data?: AppVO
     message?: string
   }
 
-  type BaseResponseListUserVO = {
+  type BaseResponseBoolean = {
     code?: number
-    data?: UserVO[]
+    data?: boolean
     message?: string
   }
 
@@ -20,6 +77,18 @@ declare namespace API {
   type BaseResponseLong = {
     code?: number
     data?: number
+    message?: string
+  }
+
+  type BaseResponsePageResultAppVO = {
+    code?: number
+    data?: PageResultAppVO
+    message?: string
+  }
+
+  type BaseResponsePageResultUserVO = {
+    code?: number
+    data?: PageResultUserVO
     message?: string
   }
 
@@ -41,8 +110,24 @@ declare namespace API {
     message?: string
   }
 
+  type deleteAppParams = {
+    id: number
+  }
+
   type DeleteRequest = {
-    id?: string
+    id?: number
+  }
+
+  type downloadAppParams = {
+    id: number
+  }
+
+  type getAppDetailByAdminParams = {
+    id: number
+  }
+
+  type getAppDetailParams = {
+    id: number
   }
 
   type getParams = {
@@ -51,6 +136,18 @@ declare namespace API {
 
   type getVOParams = {
     id: number
+  }
+
+  type listAppsByAdminParams = {
+    appQueryRequest: AppQueryRequest
+  }
+
+  type listFeaturedAppsParams = {
+    appQueryRequest: AppQueryRequest
+  }
+
+  type listMyAppsParams = {
+    appQueryRequest: AppQueryRequest
   }
 
   type listParams = {
@@ -66,6 +163,24 @@ declare namespace API {
     userRole?: 'user' | 'admin'
     createTime?: string
     updateTime?: string
+  }
+
+  type PageResultAppVO = {
+    pageNum?: number
+    pageSize?: number
+    total?: number
+    list?: AppVO[]
+  }
+
+  type PageResultUserVO = {
+    pageNum?: number
+    pageSize?: number
+    total?: number
+    list?: UserVO[]
+  }
+
+  type pinAppParams = {
+    appPinRequest: AppPinRequest
   }
 
   type saveParams = {

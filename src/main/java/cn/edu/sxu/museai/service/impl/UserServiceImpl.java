@@ -1,6 +1,8 @@
 package cn.edu.sxu.museai.service.impl;
 
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.constant.UserConstant;
+import cn.edu.sxu.museai.exception.BusinessException;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
 import cn.edu.sxu.museai.model.dto.user.UserAddRequest;
@@ -71,7 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public List<UserVO> getUserVOList(UserQueryRequest userQueryRequest) {
+    public PageResult<UserVO> getUserVOList(UserQueryRequest userQueryRequest) {
         QueryWrapper queryWrapper = QueryWrapper.create();
         if (userQueryRequest.getId() != null) {
             queryWrapper.eq(User::getId, userQueryRequest.getId());
@@ -87,11 +89,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StrUtil.isBlank(userQueryRequest.getSortOrder())) {
             queryWrapper.orderBy(userQueryRequest.getSortOrder(), !userQueryRequest.getSortOrder().equals("desc"));
         }
-        QueryWrapper queryWrapper1 = new QueryWrapper();
-        Page<User> paginate = mapper.paginate(userQueryRequest.toPage(), queryWrapper);
-        List<User> users = paginate.getRecords();
-
-        return users.stream().map(this::getUserVO).toList();
+        Page<User> page = mapper.paginate(userQueryRequest.toPage(), queryWrapper);
+        List<UserVO> list = page.getRecords().stream().map(this::getUserVO).toList();
+        return PageResult.page(page, list);
     }
 
     @Override
@@ -130,7 +130,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User getLoginUser(HttpServletRequest request) {
         User user = (User) request.getSession().getAttribute(UserConstant.USER_INFO);
         if (user == null) {
-            return null;
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         }
         user = mapper.selectOneByEntityId(user);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");

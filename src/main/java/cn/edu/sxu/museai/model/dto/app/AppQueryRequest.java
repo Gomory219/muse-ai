@@ -1,9 +1,11 @@
 package cn.edu.sxu.museai.model.dto.app;
 
 import cn.edu.sxu.museai.common.PageRequest;
+import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -31,7 +33,7 @@ public class AppQueryRequest extends PageRequest implements Serializable {
     /**
      * 代码生成类型
      */
-    private String codeGenType;
+    private CodeGenTypeEnum codeGenType;
 
     /**
      * 最小优先级
@@ -43,5 +45,6 @@ public class AppQueryRequest extends PageRequest implements Serializable {
      */
     private Integer maxPriority;
 
+    @Serial
     private static final long serialVersionUID = 1L;
 }

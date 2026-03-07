@@ -3,8 +3,12 @@
 // API 更新时间：
 // API 唯一标识：
 import * as userController from './userController'
+import * as fileUploadController from './fileUploadController'
+import * as appController from './appController'
 import * as healthController from './healthController'
 export default {
   userController,
+  fileUploadController,
+  appController,
   healthController,
 }

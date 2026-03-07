@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.service;
 
+import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.model.dto.*;
 import cn.edu.sxu.museai.model.dto.app.AppAddRequest;
 import cn.edu.sxu.museai.model.dto.app.AppNameUpdateRequest;
@@ -63,15 +64,15 @@ public interface AppService extends IService<App> {
      * @param userId          当前用户id
      * @return 应用视图对象列表
      */
-    List<AppVO> listUserApps(AppQueryRequest appQueryRequest, Long userId);
+    PageResult<AppVO> listUserApps(AppQueryRequest appQueryRequest, Long userId);
 
     /**
-     * 查询精选应用列表（按优先级排序）
+     * 分页查询精选应用列表（按优先级排序）
      *
      * @param appQueryRequest 查询请求（仅支持appName模糊查询）
-     * @return 应用视图对象列表
+     * @return 分页结果
      */
-    List<AppVO> listFeaturedApps(AppQueryRequest appQueryRequest);
+    PageResult<AppVO> listFeaturedApps(AppQueryRequest appQueryRequest);
 
     /**
      * 管理员删除任意应用
@@ -93,9 +94,9 @@ public interface AppService extends IService<App> {
      * 管理员分页查询应用列表
      *
      * @param appQueryRequest 查询请求
-     * @return 应用视图对象列表
+     * @return 分页结果
      */
-    List<AppVO> listAppsByAdmin(AppQueryRequest appQueryRequest);
+    PageResult<AppVO> listAppsByAdmin(AppQueryRequest appQueryRequest);
 
     /**
      * 管理员获取应用详情
@@ -114,4 +115,8 @@ public interface AppService extends IService<App> {
     AppVO getAppVO(App app);
 
     String deploy(String appId, Long userId);
+
+    String downloadApp(Long id, Long userId);
+
+    Boolean pinApp(Long appId);
 }
