@@ -14,11 +14,14 @@ import cn.edu.sxu.museai.exception.ThrowUtils;
 import cn.edu.sxu.museai.mapper.AppMapper;
 import cn.edu.sxu.museai.mapper.UserMapper;
 import cn.edu.sxu.museai.model.dto.*;
+import cn.edu.sxu.museai.model.entity.History;
 import cn.edu.sxu.museai.model.entity.User;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
+import cn.edu.sxu.museai.model.enums.MessageTypeEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.edu.sxu.museai.service.AppService;
+import cn.edu.sxu.museai.service.HistoryService;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.exceptions.UtilException;
 import cn.hutool.core.io.FileUtil;
@@ -32,10 +35,13 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +58,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private UserMapper userMapper;
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+    @Resource
+    private HistoryService historyService;
 
     @Override
     public Flux<String> chatToGenApp(String userMessage, Long appId, Long userId) {
@@ -63,10 +71,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权访问此应用");
 
+        // 保存用户消息
+        boolean saveHistory = historyService.addChatHistory(userMessage, MessageTypeEnum.USER, appId, userId);
+        ThrowUtils.throwIf(!saveHistory, ErrorCode.OPERATION_ERROR, "保存用户消息失败");
+
         Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.MULTI_FILE, appId);
 
         Map<String, String> e = Map.of("e", "end");
-        return stringFlux.map(chunk -> {
+        StringBuilder sb = new StringBuilder();
+        return stringFlux.doOnNext(sb::append).doFinally((t)-> {
+            // 保存AI消息
+            historyService.addChatHistory(sb.toString(), MessageTypeEnum.AI, appId, userId);
+        }).map(chunk -> {
             Map<String, String> result = Map.of("v", chunk);
             return JSONUtil.toJsonStr(result);
         }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
@@ -338,5 +354,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         return queryWrapper;
+    }
+
+    @Override
+    public boolean removeById(@NonNull Serializable id) {
+        QueryWrapper queryWrapper = QueryWrapper.create();
+        queryWrapper.eq(History::getAppId, id);
+        historyService.remove(queryWrapper);
+        return super.removeById(id);
     }
 }

@@ -1,7 +1,7 @@
 package cn.edu.sxu.museai.mapper;
 
 import com.mybatisflex.core.BaseMapper;
-import cn.edu.sxu.museai.entity.History;
+import cn.edu.sxu.museai.model.entity.History;
 
 /**
  * 对话历史 映射层。

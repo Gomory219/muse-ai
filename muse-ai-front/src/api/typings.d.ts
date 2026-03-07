@@ -86,6 +86,12 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponsePageResultHistory = {
+    code?: number
+    data?: PageResultHistory
+    message?: string
+  }
+
   type BaseResponsePageResultUserVO = {
     code?: number
     data?: PageResultUserVO
@@ -130,12 +136,36 @@ declare namespace API {
     id: number
   }
 
+  type getHistoryParams = {
+    historyQueryRequest: HistoryQueryRequest
+  }
+
   type getParams = {
     id: number
   }
 
   type getVOParams = {
     id: number
+  }
+
+  type History = {
+    id?: number
+    message?: string
+    messageType?: 'USER' | 'AI'
+    appId?: number
+    userId?: number
+    createTime?: string
+    updateTime?: string
+    isDelete?: number
+  }
+
+  type HistoryQueryRequest = {
+    pageNum?: number
+    pageSize?: number
+    sortField?: string
+    sortOrder?: string
+    appId?: number
+    lastCreateTime?: string
   }
 
   type listAppsByAdminParams = {
@@ -170,6 +200,13 @@ declare namespace API {
     pageSize?: number
     total?: number
     list?: AppVO[]
+  }
+
+  type PageResultHistory = {
+    pageNum?: number
+    pageSize?: number
+    total?: number
+    list?: History[]
   }
 
   type PageResultUserVO = {

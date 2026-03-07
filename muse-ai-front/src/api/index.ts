@@ -5,10 +5,12 @@
 import * as userController from './userController'
 import * as fileUploadController from './fileUploadController'
 import * as appController from './appController'
+import * as historyController from './historyController'
 import * as healthController from './healthController'
 export default {
   userController,
   fileUploadController,
   appController,
+  historyController,
   healthController,
 }

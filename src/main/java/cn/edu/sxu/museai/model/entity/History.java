@@ -1,5 +1,6 @@
-package cn.edu.sxu.museai.entity;
+package cn.edu.sxu.museai.model.entity;
 
+import cn.edu.sxu.museai.model.enums.MessageTypeEnum;
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
@@ -46,7 +47,7 @@ public class History implements Serializable {
      * user/ai
      */
     @Column("messageType")
-    private String messageType;
+    private MessageTypeEnum messageType;
 
     /**
      * 应用id
