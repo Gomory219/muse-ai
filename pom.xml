@@ -116,6 +116,7 @@
       <version>4.9.1</version>
     </dependency>
 
+    <!-- Source: https://mvnrepository.com/artifact/dev.langchain4j/langchain4j-open-ai-spring-boot-starter -->
     <dependency>
       <groupId>dev.langchain4j</groupId>
       <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
@@ -134,6 +135,28 @@
       <artifactId>langchain4j-reactor</artifactId>
       <version>1.11.0-beta19</version>
       <scope>compile</scope>
+    </dependency>
+
+    <!-- Source: https://mvnrepository.com/artifact/dev.langchain4j/langchain4j-community-redis -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-community-redis</artifactId>
+      <version>1.8.0-beta15</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Source: https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+      <version>3.2.3</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Spring Session + Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
     </dependency>
 
   </dependencies>

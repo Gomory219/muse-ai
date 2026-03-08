@@ -28,11 +28,9 @@ const handleLogin = async () => {
       userStore.setUser(res.data.data)
       message.success('登录成功')
       router.push('/')
-    } else {
-      message.error(res.data.message || '登录失败')
     }
   } catch (error) {
-    message.error('登录失败，请稍后重试')
+    // 错误已由全局拦截器处理
   } finally {
     loading.value = false
   }

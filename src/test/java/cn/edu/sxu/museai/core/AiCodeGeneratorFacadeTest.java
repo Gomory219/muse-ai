@@ -8,6 +8,7 @@ import reactor.core.publisher.Flux;
 import java.io.File;
 
 import static cn.edu.sxu.museai.model.enums.CodeGenTypeEnum.MULTI_FILE;
+import static cn.edu.sxu.museai.model.enums.CodeGenTypeEnum.VUE;
 
 
 @SpringBootTest
@@ -26,5 +27,11 @@ class AiCodeGeneratorFacadeTest {
     void generateCodeAndSaveStreaming() {
         Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个个人博客网站，单个文件代码不要超过300行", MULTI_FILE, 2L);
         stringFlux.doOnNext(System.out::print).doOnComplete(System.out::println).blockLast();
+    }
+
+    @Test
+    void testGenerateCodeAndSaveStreaming() {
+        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个博客网站，代码量不要超过200行", VUE, 6L);
+        stringFlux.doOnNext((s)->{}).blockLast();
     }
 }

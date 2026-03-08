@@ -3,12 +3,43 @@ import { defineStore } from 'pinia'
 
 const USER_KEY = 'museai-user'
 
+// 需要转换为字符串的 ID 字段名
+const ID_FIELDS = ['id', 'userId']
+
+/**
+ * 递归转换对象中的 ID 字段为字符串
+ */
+function convertIdsToString(data: any): any {
+  if (data === null || data === undefined) {
+    return data
+  }
+  if (Array.isArray(data)) {
+    return data.map(convertIdsToString)
+  }
+  if (typeof data === 'object') {
+    const result: any = {}
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        if (ID_FIELDS.includes(key) && typeof data[key] === 'number') {
+          result[key] = String(data[key])
+        } else {
+          result[key] = convertIdsToString(data[key])
+        }
+      }
+    }
+    return result
+  }
+  return data
+}
+
 // 从 localStorage 获取用户信息
 function getStoredUser(): API.LoginUserVO | null {
   const stored = localStorage.getItem(USER_KEY)
   if (stored) {
     try {
-      return JSON.parse(stored)
+      const parsed = JSON.parse(stored)
+      // 转换 ID 字段为字符串，确保与类型定义一致
+      return convertIdsToString(parsed)
     } catch {
       return null
     }

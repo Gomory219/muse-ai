@@ -14,6 +14,7 @@ public class CodeParserExecutor {
         return switch (codeGenTypeEnum) {
             case HTML -> htmlCodeParserStrategy.parse(code);
             case MULTI_FILE -> multiFileCodeParserStrategy.parse(code);
+            case VUE -> null;
         };
     }
 }

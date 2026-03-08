@@ -121,11 +121,9 @@ const fetchUsers = async () => {
     if (res.data.code === 0 && res.data.data) {
       dataSource.value = res.data.data.list || []
       pagination.value.total = res.data.data.total || 0
-    } else {
-      message.error(res.data.message || '获取用户列表失败')
     }
   } catch (error) {
-    message.error('获取用户列表失败')
+    // 错误已由全局拦截器处理
   } finally {
     loading.value = false
   }
@@ -309,11 +307,9 @@ const handleSave = async () => {
       message.success(editingUser.value?.id ? '修改成功' : '添加成功')
       modalVisible.value = false
       fetchUsers()
-    } else {
-      message.error(res.data.message || '操作失败')
     }
   } catch (error) {
-    message.error('操作失败')
+    // 错误已由全局拦截器处理
   } finally {
     modalLoading.value = false
   }
@@ -328,15 +324,13 @@ const handleDelete = (user: API.UserVO) => {
     cancelText: '取消',
     onOk: async () => {
       try {
-        const res = await deleteUsingPost({ id: String(user.id) })
+        const res = await deleteUsingPost({ id: user.id })
         if (res.data.code === 0) {
           message.success('删除成功')
           fetchUsers()
-        } else {
-          message.error(res.data.message || '删除失败')
         }
       } catch (error) {
-        message.error('删除失败')
+        // 错误已由全局拦截器处理
       }
     },
   })

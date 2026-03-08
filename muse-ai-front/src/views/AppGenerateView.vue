@@ -22,7 +22,8 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import { API_BASE_URL } from '@/request'
 import { useUserStore } from '@/stores/user'
-import { listMyApps, deployApp, updateAppName, downloadApp } from '@/api/appController'
+import { listMyApps, deployApp, updateAppName, downloadApp, getAppDetail } from '@/api/appController'
+import { getHistory } from '@/api/historyController'
 import type { AppVO } from '@/api/typings.d'
 
 // 初始化 markdown-it
@@ -53,8 +54,16 @@ const userStore = useUserStore()
 // 应用信息
 const appId = ref<string>(route.query.appId as string)
 const appName = ref<string>('未命名应用')
+const appInitPrompt = ref<string>('')
+const appOwnerId = ref<string>('')
 const prompt = ref<string>(route.query.prompt as string || '')
 const codeGenType = ref<string>('multi-file')
+
+// 聊天历史加载状态
+const isLoadingHistory = ref(false)
+const hasMoreHistory = ref(true)
+const oldestCreateTime = ref<string>('')
+const historyTotalCount = ref<number>(0)
 
 // 菜单相关
 const appMenuOpen = ref(false)
@@ -128,17 +137,15 @@ const saveAppName = async () => {
 
   try {
     const res = await updateAppName({
-      id: Number(appId.value),
+      id: appId.value,
       appName: newName,
     })
     if (res.data.code === 0) {
       appName.value = newName
       message.success('名称修改成功')
-    } else {
-      message.error(res.data.message || '修改失败')
     }
   } catch (error) {
-    message.error('修改失败')
+    // 错误已由全局拦截器处理
   } finally {
     isEditingName.value = false
   }
@@ -186,6 +193,21 @@ const onScroll = () => {
   if (!chatContainer.value) return
   const currentScrollTop = chatContainer.value.scrollTop
 
+  // 检测是否滚动到顶部，触发加载更多历史记录
+  if (currentScrollTop === 0 && hasMoreHistory.value && !isLoadingHistory.value) {
+    // 保存当前滚动位置，防止加载后跳转
+    const oldScrollHeight = chatContainer.value.scrollHeight
+    loadHistory(true).then(() => {
+      // 加载完成后恢复滚动位置
+      nextTick(() => {
+        if (chatContainer.value) {
+          const newScrollHeight = chatContainer.value.scrollHeight
+          chatContainer.value.scrollTop = newScrollHeight - oldScrollHeight
+        }
+      })
+    })
+  }
+
   // 只有当用户主动向上滚动（scrollTop 减小）且不在底部时，才标记为已向上滚动
   // 如果是内容增长导致的相对位置变化，scrollTop 会保持不变或增加
   if (currentScrollTop < lastScrollTop && !isNearBottom()) {
@@ -212,11 +234,26 @@ const smartScroll = () => {
 
 // 代码生成状态
 const isCodeGenerated = ref(false)
-const showPreviewIframe = ref(false)
+const pageLoadError = ref(false)
+
+// 判断当前用户是否是应用所有者
+const isAppOwner = computed(() => {
+  return userStore.isLogin && userStore.loginUser?.id === appOwnerId.value
+})
+
+// 判断是否应该显示预览
+const shouldShowPreview = computed(() => {
+  return messages.value.length > 0 && !isGenerating.value
+})
+
+// 判断是否显示"尚未生成完毕"提示
+const showNotReadyMessage = computed(() => {
+  return messages.value.length === 0 && !isGenerating.value && !isAppOwner.value
+})
 
 // iframe 预览
 const iframeUrl = computed(() => {
-  if (!appId.value || !showPreviewIframe.value) return ''
+  if (!appId.value) return ''
   if (codeGenType.value === 'multi-file') {
     return `${API_BASE_URL}/code/multi-file/${appId.value}/index.html`
   } else {
@@ -224,10 +261,21 @@ const iframeUrl = computed(() => {
   }
 })
 
+// iframe 加载错误处理
+const handleIframeError = () => {
+  pageLoadError.value = true
+}
+
+// iframe 加载成功处理
+const handleIframeLoad = () => {
+  pageLoadError.value = false
+}
+
 // 显示预览（代码生成完成后调用）
 const showPreview = () => {
-  showPreviewIframe.value = true
-  refreshIframe()
+  if (shouldShowPreview.value) {
+    refreshIframe()
+  }
 }
 
 // iframe 刷新触发
@@ -274,7 +322,7 @@ const groupedApps = computed(() => {
 
 // 是否当前应用
 const isCurrentApp = (app: AppVO) => {
-  return String(app.id) === appId.value
+  return app.id === appId.value
 }
 
 // 切换应用
@@ -283,7 +331,7 @@ const switchApp = (app: AppVO) => {
   appMenuOpen.value = false
   router.push({
     path: '/app/generate',
-    query: { appId: String(app.id) },
+    query: { appId: app.id },
   })
 }
 
@@ -337,11 +385,9 @@ const handleDownload = async () => {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-    } else {
-      message.error(res.data.message || '获取下载链接失败')
     }
   } catch (error) {
-    message.error('下载失败')
+    // 错误已由全局拦截器处理
   } finally {
     isDownloading.value = false
   }
@@ -363,13 +409,10 @@ const handleDeploy = async () => {
       deployedUrl.value = res.data.data || ''
       console.log('部署URL:', deployedUrl.value)
       showDeployModal.value = true
-    } else {
-      console.error('部署失败:', res.data.message)
-      message.error(res.data.message || '部署失败')
     }
   } catch (error) {
     console.error('部署异常:', error)
-    message.error('部署失败')
+    // 错误已由全局拦截器处理
   } finally {
     isDeploying.value = false
   }
@@ -403,7 +446,7 @@ const loadApps = async () => {
       const appList = res.data.data.list || []
       myApps.value = appList
       // 查找当前应用名称
-      const currentApp = appList.find((app: AppVO) => String(app.id) === appId.value)
+      const currentApp = appList.find((app: AppVO) => app.id === appId.value)
       if (currentApp?.appName) {
         appName.value = currentApp.appName
       }
@@ -437,6 +480,7 @@ const sendChatRequest = async (userMessage: string) => {
   }
 
   isGenerating.value = true
+  pageLoadError.value = false // 重置页面加载错误状态
   userScrolledUp = false // 重置滚动状态
   // 等待DOM更新后滚动到底部
   await nextTick()
@@ -463,7 +507,17 @@ const sendChatRequest = async (userMessage: string) => {
     })
 
     if (!response.ok) {
-      throw new Error(`请求失败: ${response.status}`)
+      // HTTP 错误
+      let errorMsg = `请求失败: ${response.status}`
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMsg = errorData.message
+        }
+      } catch (e) {
+        // 忽略 JSON 解析错误
+      }
+      throw new Error(errorMsg)
     }
 
     const reader = response.body?.getReader()
@@ -474,6 +528,45 @@ const sendChatRequest = async (userMessage: string) => {
     const decoder = new TextDecoder()
     let buffer = ''
 
+    // 先读取第一块数据，检查是否是错误响应
+    const { done: firstDone, value: firstValue } = await reader.read()
+    if (firstValue) {
+      buffer += decoder.decode(firstValue, { stream: true })
+    }
+
+    // 检查第一行是否是业务错误响应
+    const firstLine = buffer.split('\n')[0].trim()
+    if (firstLine) {
+      let jsonStr = firstLine
+      if (jsonStr.startsWith('data:')) {
+        jsonStr = jsonStr.slice(5).trim()
+      }
+      try {
+        const parsed = JSON.parse(jsonStr)
+        // 检查是否是业务错误响应
+        if (parsed.code !== undefined && parsed.code !== 0) {
+          message.error(parsed.message || '操作失败')
+          isGenerating.value = false
+          messages.value.pop() // 移除刚才添加的 assistant 消息
+          return
+        }
+        // 如果是正常数据，添加到响应中
+        if (parsed.v !== undefined) {
+          currentResponse.value += parsed.v
+          smartScroll()
+        }
+      } catch {
+        // 不是 JSON，当作普通文本处理
+      }
+    }
+
+    // 如果没有更多数据，直接返回
+    if (firstDone) {
+      isGenerating.value = false
+      return
+    }
+
+    // 继续处理剩余的流式响应
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
@@ -529,7 +622,7 @@ const sendChatRequest = async (userMessage: string) => {
   } finally {
     isGenerating.value = false
     isCodeGenerated.value = true
-    // 生成完成后显示预览
+    // 生成完成后尝试显示预览
     showPreview()
   }
 }
@@ -547,41 +640,118 @@ const getMessageContent = (msg: any) => {
   return msg.content?.value || ''
 }
 
+// 加载聊天历史记录
+const loadHistory = async (loadMore = false) => {
+  if (!appId.value || isLoadingHistory.value) return
+
+  isLoadingHistory.value = true
+
+  try {
+    const res = await getHistory({
+      historyQueryRequest: {
+        appId: appId.value,
+        pageSize: 10,
+        lastCreateTime: loadMore && oldestCreateTime.value ? oldestCreateTime.value : undefined,
+      },
+    })
+
+    if (res.data.code === 0 && res.data.data) {
+      const historyList = res.data.data.list || []
+      historyTotalCount.value = res.data.data.total || 0
+
+      if (historyList.length > 0) {
+        // 更新最老消息的创建时间（用于分页）
+        // 后端返回倒序数据（最新的在前），所以取最后一个元素的时间
+        oldestCreateTime.value = historyList[historyList.length - 1].createTime || ''
+
+        // 将历史记录转换为消息格式（按时间正序）
+        const newMessages = historyList.map((item) => ({
+          role: item.messageType === 'USER' ? 'user' : 'assistant',
+          content: item.message || '',
+        }))
+
+        if (loadMore) {
+          // 加载更多：将新消息插入到数组开头
+          messages.value = [...newMessages, ...messages.value]
+        } else {
+          // 首次加载：直接设置消息列表
+          messages.value = newMessages
+          // 首次加载后滚动到底部
+          await nextTick()
+          scrollToBottom()
+        }
+
+        // 判断是否还有更多历史记录
+        hasMoreHistory.value = historyList.length === 10 && messages.value.length < historyTotalCount.value
+      } else {
+        hasMoreHistory.value = false
+      }
+
+      return historyList.length > 0
+    }
+    return false
+  } catch (error: any) {
+    console.error('加载聊天历史失败', error)
+    // 错误已由全局拦截器处理
+    return false
+  } finally {
+    isLoadingHistory.value = false
+  }
+}
+
 // 初始化应用数据
 const initAppData = async (newAppId?: string) => {
   const targetAppId = newAppId || route.query.appId as string
   const isSwitchingApp = targetAppId && targetAppId !== appId.value
 
-  // 判断是否是首次进入（不带 prompt）- 这种情况应该直接显示预览
-  const isExistingApp = !prompt.value && targetAppId
-
   if (isSwitchingApp) {
     appId.value = targetAppId
     messages.value = []
-    // 切换应用时：直接显示预览（不重置状态）
-    showPreviewIframe.value = true
-    isCodeGenerated.value = true
-  } else if (isExistingApp) {
-    // 首次进入已有应用，直接显示预览
-    showPreviewIframe.value = true
-    isCodeGenerated.value = true
+    hasMoreHistory.value = true
+    oldestCreateTime.value = ''
+    historyTotalCount.value = 0
   }
 
+  // 加载应用列表
   await loadApps()
 
-  // 查找当前应用名称
+  // 获取当前应用详细信息
   const currentApp = myApps.value.find((app: AppVO) => String(app.id) === appId.value)
-  if (currentApp?.appName) {
-    appName.value = currentApp.appName
+  if (currentApp) {
+    appName.value = currentApp.appName || '未命名应用'
+    appInitPrompt.value = currentApp.initPrompt || ''
+    appOwnerId.value = currentApp.userId || ''
+  } else {
+    // 如果应用列表中没有，尝试单独获取
+    try {
+      const res = await getAppDetail({ id: appId.value })
+      if (res.data.code === 0 && res.data.data) {
+        const appDetail = res.data.data
+        appName.value = appDetail.appName || '未命名应用'
+        appInitPrompt.value = appDetail.initPrompt || ''
+        appOwnerId.value = appDetail.userId || ''
+      }
+    } catch (error: any) {
+      console.error('获取应用详情失败', error)
+      // 错误已由全局拦截器处理
+    }
   }
 
-  if (prompt.value && messages.value.length === 0) {
-    // 有 prompt 说明是新生成的应用，需要生成代码
+  // 加载聊天历史记录
+  const hasHistory = await loadHistory()
+
+  // 判断是否需要自动触发 AI 生成
+  const isLoggedIn = userStore.isLogin
+  const isOwner = isLoggedIn && userStore.loginUser?.id === appOwnerId.value
+  const shouldAutoGenerate = !hasHistory && isOwner && appInitPrompt.value
+
+  if (shouldAutoGenerate) {
+    // 没有历史记录且是应用所有者，使用 initPrompt 触发生成
     messages.value.push({
       role: 'user',
-      content: prompt.value,
+      content: appInitPrompt.value,
     })
-    await sendChatRequest(prompt.value)
+    await sendChatRequest(appInitPrompt.value)
   }
 }
 
@@ -873,22 +1043,40 @@ const handleCodeGenTypeChange = (type: string) => {
           <p class="generating-text">AI 正在生成代码，请稍候...</p>
           <p class="generating-subtext">代码生成完成后将自动预览</p>
         </div>
-        <!-- 首次进入未生成 -->
-        <div v-else-if="!iframeUrl && !isCodeGenerated" class="preview-placeholder">
-          <div class="placeholder-icon">
-            <LoadingOutlined class="spinning" />
+        <!-- 网页尚未生成完毕 -->
+        <div v-else-if="showNotReadyMessage" class="preview-placeholder">
+          <div class="placeholder-icon static-icon">
+            📄
           </div>
-          <p>请先在左侧描述需求，AI 将为您生成代码</p>
+          <p>网页尚未生成完毕</p>
+        </div>
+        <!-- 网页生成出错 -->
+        <div v-else-if="pageLoadError" class="preview-error">
+          <div class="error-icon">⚠️</div>
+          <p class="error-text">网页生成出了点问题</p>
+          <button class="retry-btn" @click="handleRefresh">
+            <SyncOutlined />
+            <span>重试</span>
+          </button>
         </div>
         <!-- iframe 预览 -->
         <iframe
-          v-else
+          v-else-if="shouldShowPreview && iframeUrl"
           :key="iframeKey"
           :src="iframeUrl"
           class="preview-iframe"
           frameborder="0"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          @error="handleIframeError"
+          @load="handleIframeLoad"
         ></iframe>
+        <!-- 首次进入未生成 -->
+        <div v-else class="preview-placeholder">
+          <div class="placeholder-icon">
+            <LoadingOutlined class="spinning" />
+          </div>
+          <p>请先在左侧描述需求，AI 将为您生成代码</p>
+        </div>
       </div>
     </div>
     </div>
@@ -1793,6 +1981,51 @@ const handleCodeGenTypeChange = (type: string) => {
   font-size: 48px;
   color: var(--accent-green);
   margin-bottom: 16px;
+}
+
+.placeholder-icon.static-icon {
+  font-size: 64px;
+  opacity: 0.8;
+}
+
+/* ===== 网页生成出错提示 ===== */
+.preview-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--bg-card);
+  padding: 40px;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.error-text {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--accent-green);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  opacity: 0.9;
 }
 
 /* ===== AI 生成中提示 ===== */

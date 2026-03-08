@@ -1,4 +1,6 @@
 spring:
+  session:
+    timeout: 2592000
   application:
     name: muse-ai
   main:
@@ -11,6 +13,13 @@ spring:
     username: root
     password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      database: 0
+      host: 106.54.215.151
+      port: 6380
+      password: ${REDIS_PASSWORD}
+      ttl: 3600
 
 langchain4j:
   open-ai:
@@ -33,7 +42,6 @@ langchain4j:
       log-responses: true
       max-tokens: 8192
       strict-json-schema: true
-      response-format: json_object
       max-retries: 0
       timeout: 180s
 

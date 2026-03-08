@@ -1,6 +1,7 @@
 package cn.edu.sxu.museai.core;
 
 import cn.edu.sxu.museai.ai.AiService;
+import cn.edu.sxu.museai.ai.AiServiceFactory;
 import cn.edu.sxu.museai.ai.model.HtmlCodeResult;
 import cn.edu.sxu.museai.ai.model.MultiFileResult;
 import cn.edu.sxu.museai.core.parser.AiCodeResponseParser;
@@ -24,6 +25,8 @@ import java.io.File;
 public class AiCodeGeneratorFacade {
     @Resource
     private AiService aiService;
+    @Resource
+    private AiServiceFactory aiServiceFactory;
 
     /**
      *  根据用户消息和代码生成类型生成代码并保存为文件
@@ -36,6 +39,7 @@ public class AiCodeGeneratorFacade {
         Object codeResult = switch (codeGenTypeEnum) {
             case HTML -> aiService.generateSingleFile(userMessage);
             case MULTI_FILE -> aiService.generateMultiFile(userMessage);
+            case VUE -> null;
         };
         return CodeFileSaverExecutor.saveFile(codeResult, codeGenTypeEnum, appId);
     }
@@ -48,15 +52,35 @@ public class AiCodeGeneratorFacade {
      */
     public Flux<String> generateCodeAndSaveStreaming(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
-        Flux<String> codeFlux = switch (codeGenTypeEnum) {
-            case HTML -> aiService.generateSingleFileStreaming(userMessage);
-            case MULTI_FILE -> aiService.generateMultiFileStreaming(userMessage);
+        AiService aiServiceWithMemory = aiServiceFactory.aiService(appId, codeGenTypeEnum);
+        return switch (codeGenTypeEnum) {
+            case HTML -> {
+                Flux<String> codeFlux = aiServiceWithMemory.generateSingleFileStreaming(userMessage);
+                yield  processFileSave(codeFlux, codeGenTypeEnum, appId);
+            }
+            case MULTI_FILE -> {
+                Flux<String> codeFlux = aiServiceWithMemory.generateMultiFileStreaming(userMessage);
+                yield  processFileSave(codeFlux, codeGenTypeEnum, appId);
+            }
+            case VUE ->{
+                TokenStream tokenStream = aiServiceWithMemory.generateVueProjectStreaming(userMessage, appId);
+                yield Flux.create(sink -> {
+                    tokenStream
+                            .onPartialResponse(sink::next)
+                            .onCompleteResponse(response -> sink.complete())
+                            .onPartialToolCall(partialToolCall -> {
+                            })
+                            .onToolExecuted(toolExecution -> {
+                            })
+                            .onError(sink::error)
+                            .start();
+                });
+            }
         };
-        return processFileSave(codeFlux, codeGenTypeEnum, appId);
     }
 
     /**
-     * 给定一个 代码输出流，为其绑定 Side-effect operator，在流完成时，将代码保存到文件中并打印文件路径
+     * 给定一个 代码输出流，为其绑定 Side-effect operator，在流完成时，先将ai输出流parse为pojo，再将代码保存到文件中并打印文件路径
      * @param codeFlux 包含代码的字符流
      * @param codeGenTypeEnum 代码生成类型
      * @return 处理过后的流

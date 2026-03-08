@@ -197,10 +197,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Override
     public AppVO getAppDetail(Long id, Long userId) {
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
-
         App app = getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
-        ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权查看此应用");
 
         return getAppVO(app);
     }

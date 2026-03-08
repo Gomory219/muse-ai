@@ -21,7 +21,7 @@ const modalLoading = ref(false)
 const editingApp = ref<API.AppVO | null>(null)
 
 const appForm = ref({
-  id: undefined as number | undefined,
+  id: undefined as string | undefined,
   appName: '',
 })
 
@@ -108,11 +108,9 @@ const fetchApps = async () => {
     if (res.data.code === 0 && res.data.data) {
       dataSource.value = res.data.data.list || []
       pagination.value.total = res.data.data.total || 0
-    } else {
-      message.error(res.data.message || '获取应用列表失败')
     }
   } catch (error) {
-    message.error('获取应用列表失败')
+    // 错误已由全局拦截器处理
   } finally {
     loading.value = false
   }
@@ -140,12 +138,11 @@ const toggleFeatured = async (app: API.AppVO) => {
     } else {
       // 失败则回滚状态
       app.priority = oldPriority
-      message.error(res.data.message || '操作失败')
     }
   } catch (error) {
     // 失败则回滚状态
     app.priority = oldPriority
-    message.error('操作失败')
+    // 错误已由全局拦截器处理
   }
 }
 
@@ -191,11 +188,9 @@ const handleSave = async () => {
       message.success('修改成功')
       modalVisible.value = false
       fetchApps()
-    } else {
-      message.error(res.data.message || '操作失败')
     }
   } catch (error) {
-    message.error('操作失败')
+    // 错误已由全局拦截器处理
   } finally {
     modalLoading.value = false
   }
@@ -215,11 +210,9 @@ const handleDelete = (app: API.AppVO) => {
         if (res.data.code === 0) {
           message.success('删除成功')
           fetchApps()
-        } else {
-          message.error(res.data.message || '删除失败')
         }
       } catch (error) {
-        message.error('删除失败')
+        // 错误已由全局拦截器处理
       }
     },
   })

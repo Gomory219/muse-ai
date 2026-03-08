@@ -11,8 +11,14 @@ public class MultiFileSaverTemplate extends CodeFileSaverTemplate<MultiFileResul
 
     @Override
     protected void saveFiles(String basePath, MultiFileResult codeResult) {
-        saveToFile(basePath, "index.html", codeResult.getHtmlCode());
-        saveToFile(basePath, "style.css", codeResult.getCssCode());
-        saveToFile(basePath, "script.js", codeResult.getJavaScriptCode());
+        if (codeResult.getHtmlCode() != null) {
+            saveToFile(basePath, "index.html", codeResult.getHtmlCode());
+        }
+        if (codeResult.getCssCode() != null) {
+            saveToFile(basePath, "style.css", codeResult.getCssCode());
+        }
+        if (codeResult.getJavaScriptCode() != null) {
+            saveToFile(basePath, "script.js", codeResult.getJavaScriptCode());
+        }
     }
 }

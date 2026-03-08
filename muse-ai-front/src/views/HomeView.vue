@@ -68,13 +68,8 @@ const handleSend = async () => {
       path: '/app/generate',
       query: { appId, prompt: trimmedPrompt },
     })
-  } catch (error: any) {
-    if (error?.response?.status === 401) {
-      message.warning('请先登录')
-      router.push('/user/login')
-    } else {
-      message.error('生成失败，请重试')
-    }
+  } catch (error) {
+    // 错误已由全局拦截器处理
   } finally {
     isGenerating.value = false
   }
@@ -142,7 +137,7 @@ const handleAppClick = (app: API.AppVO) => {
   router.push({
     path: '/app/generate',
     query: {
-      appId: String(app.id),
+      appId: app.id,
     },
   })
 }
