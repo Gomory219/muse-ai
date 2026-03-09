@@ -80,7 +80,7 @@ public class AiServiceFactory {
                         .alwaysKeepSystemMessageFirst(true)
                         .id(appId)
                         .chatMemoryStore(chatMemoryStore)
-                        .maxMessages(20)
+                        .maxMessages(25)
                         .build();
                 int n = historyService.loadMessageToMemory(chatMemoryStore, appId);
                 log.info("Loaded {} messages to memory for app {}", n, appId);

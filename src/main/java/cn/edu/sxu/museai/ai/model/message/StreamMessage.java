@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class StreamMessage {
-    private StreamMessageTypeEnum type;
+    protected StreamMessageTypeEnum type;
 }

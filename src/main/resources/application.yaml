@@ -38,8 +38,8 @@ langchain4j:
       base-url: https://api.minimaxi.com/v1
       api-key: ${MUSE_MINIMAX_API_KEY}
       model-name: MiniMax-M2.5
-      log-requests: true
-      log-responses: true
+#      log-requests: true
+#      log-responses: true
       max-tokens: 8192
       strict-json-schema: true
       max-retries: 0

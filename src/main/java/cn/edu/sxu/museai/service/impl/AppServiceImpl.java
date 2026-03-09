@@ -61,6 +61,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private HistoryService historyService;
 
+    /**
+     * @param userMessage 用户prompt
+     * @param appId 应用id
+     * @param userId 用户id
+     * @return 可以直接返回给前端的数据流
+     */
     @Override
     public Flux<String> chatToGenApp(String userMessage, Long appId, Long userId) {
         ThrowUtils.throwIf(StrUtil.isBlank(userMessage), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
@@ -75,19 +81,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         boolean saveHistory = historyService.addChatHistory(userMessage, MessageTypeEnum.USER, appId, userId);
         ThrowUtils.throwIf(!saveHistory, ErrorCode.OPERATION_ERROR, "保存用户消息失败");
 
-        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.MULTI_FILE, appId);
+//        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.VUE, appId);
 
-        Map<String, String> e = Map.of("e", "end");
-        StringBuilder sb = new StringBuilder();
-        return stringFlux.doOnNext(sb::append).doFinally((t)-> {
-            // 保存AI消息
-            historyService.addChatHistory(sb.toString(), MessageTypeEnum.AI, appId, userId);
-        }).map(chunk -> {
-            Map<String, String> result = Map.of("v", chunk);
-            return JSONUtil.toJsonStr(result);
-        }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
-            log.info("用户取消生成代码");
-        });
+//        Map<String, String> e = Map.of("e", "end");
+//        StringBuilder sb = new StringBuilder();
+//        return stringFlux.doOnNext(sb::append).doFinally((t)-> {
+//             保存AI消息
+//            historyService.addChatHistory(sb.toString(), MessageTypeEnum.AI, appId, userId);
+//        }).map(chunk -> {
+//            Map<String, String> result = Map.of("v", chunk);
+//            return JSONUtil.toJsonStr(result);
+//        }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
+//            log.info("用户取消生成代码");
+//        });
+        return aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.VUE, appId, userId);
     }
 
     @Override

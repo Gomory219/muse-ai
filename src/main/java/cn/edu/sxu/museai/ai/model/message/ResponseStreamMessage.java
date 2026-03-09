@@ -8,7 +8,11 @@ import lombok.NoArgsConstructor;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-@AllArgsConstructor
 public class ResponseStreamMessage extends StreamMessage {
     private String response;
+
+    public ResponseStreamMessage(String chunk) {
+        this.response = chunk;
+        this.type = StreamMessageTypeEnum.AI_RESPONSE;
+    }
 }

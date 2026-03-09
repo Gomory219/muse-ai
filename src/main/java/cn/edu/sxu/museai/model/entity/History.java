@@ -79,4 +79,10 @@ public class History implements Serializable {
     @Column(value = "isDelete", isLogicDelete = true)
     private Integer isDelete;
 
+    /**
+     * 工具调用JSON
+     */
+    @Column("toolExecutionRequests")
+    private String toolExecutionRequests;
+
 }
