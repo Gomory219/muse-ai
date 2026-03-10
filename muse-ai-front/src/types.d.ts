@@ -116,7 +116,7 @@ declare namespace API {
     sortField?: string
     sortOrder?: string
     appId?: string
-    lastCreateTime?: string
+    lastId?: number
   }
 
   type UserQueryRequest = {

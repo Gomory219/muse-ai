@@ -29,7 +29,7 @@ declare namespace API {
     id?: number
     appName?: string
     userId?: number
-    codeGenType?: 'HTML' | 'MULTI_FILE'
+    codeGenType?: 'HTML' | 'MULTI_FILE' | 'VUE'
     minPriority?: number
     maxPriority?: number
   }
@@ -151,12 +151,13 @@ declare namespace API {
   type History = {
     id?: number
     message?: string
-    messageType?: 'USER' | 'AI'
+    messageType?: 'USER' | 'AI' | 'TOOL_EXECUTED'
     appId?: number
     userId?: number
     createTime?: string
     updateTime?: string
     isDelete?: number
+    toolExecutionRequests?: string
   }
 
   type HistoryQueryRequest = {
@@ -165,7 +166,7 @@ declare namespace API {
     sortField?: string
     sortOrder?: string
     appId?: number
-    lastCreateTime?: string
+    lastId?: number
   }
 
   type listAppsByAdminParams = {

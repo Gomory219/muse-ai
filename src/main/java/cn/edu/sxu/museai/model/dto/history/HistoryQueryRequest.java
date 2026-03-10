@@ -18,10 +18,10 @@ public class HistoryQueryRequest extends PageRequest implements Serializable {
     private Long appId;
 
     /**
-     * 游标查询 - 最后一条记录的创建时间
-     * 用于分页查询，获取早于此时间的记录
+     * 游标查询 - 最后一条记录的id
+     * 用于分页查询，获取小于该id的记录
      */
-    private LocalDateTime lastCreateTime;
+    private Long lastId;
 
     @Serial
     private static final long serialVersionUID = 1L;

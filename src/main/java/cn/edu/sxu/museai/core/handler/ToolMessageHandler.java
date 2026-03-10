@@ -15,10 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 带有工具调用消息的处理器
@@ -78,17 +75,26 @@ public class ToolMessageHandler extends BaseMessageHandler {
                     // 从工具执行转到AI响应的首次，需要将上一次的工具调用结果保存
                     // 结果有两个地方需要用到，一个是上一次的ai响应，一个是工具调用结果
                     History lastHistory = historyList.getLast();
-                    List<History> toolsList = toolExecutedMessageList.stream().map(toolExecutedMessage -> History.builder()
-                            .message(toolExecutedMessage.getToolOutput())
-                            .messageType(MessageTypeEnum.TOOL_EXECUTED)
-                            .appId(appId)
-                            .userId(userId)
-                            .build()).toList();
-                    historyList.addAll(toolsList);
-                    toolExecutedMessageList.forEach(toolExecutedMessage -> {
-                        toolExecutedMessage.setToolOutput(null);
-                    });
-                    lastHistory.setToolExecutionRequests(JSONUtil.toJsonStr(toolsList));
+                    List<History> toolsHistoryList = toolExecutedMessageList.stream().map(toolExecutedMessage -> {
+                        ToolExecutedMessage toolMessage = ToolExecutedMessage.builder()  // 近乎保留了原来消息的所有信息，包括名称、输出、参数
+                                .toolName(toolExecutedMessage.getToolName())
+                                .toolOutput(toolExecutedMessage.getToolOutput())
+                                .arguments(toolExecutedMessage.getArguments())
+                                .build();
+                        return History.builder()
+                                .message(JSONUtil.toJsonStr(toolMessage))
+                                .messageType(MessageTypeEnum.TOOL_EXECUTED)
+                                .appId(appId)
+                                .userId(userId)
+                                .build();
+                    }).toList();
+                    historyList.addAll(toolsHistoryList);
+                    List<ToolExecutedMessage> toolsSaveToAiHistory = toolExecutedMessageList.stream().map(toolExecutedMessage -> {
+                        ToolExecutedMessage messageOnlyName = new ToolExecutedMessage();
+                        messageOnlyName.setToolName(toolExecutedMessage.getToolName());
+                        return messageOnlyName;
+                    }).toList();
+                    lastHistory.setToolExecutionRequests(JSONUtil.toJsonStr(toolsSaveToAiHistory));
                     toolExecutedMessageList.clear();
                 }
                 ResponseStreamMessage response = JSONUtil.toBean(message, ResponseStreamMessage.class);
@@ -128,6 +134,7 @@ public class ToolMessageHandler extends BaseMessageHandler {
                         .jsonViewType(JsonViewType.TOOL_EXECUTED)
                         .toolName(toolExecutedMessage.getToolName())
                         .toolResult(toolExecutedMessage.getToolOutput())
+                        .v(toolExecutedMessage.getArguments())
                         .build();
                 return JSONUtil.toJsonStr(standardMessage);
             }

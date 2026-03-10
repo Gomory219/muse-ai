@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -57,14 +58,15 @@ public class HistoryServiceImpl extends ServiceImpl<HistoryMapper, History> impl
     @Override
     public PageResult<History> getHistory(HistoryQueryRequest historyQueryRequest) {
         Long appId = historyQueryRequest.getAppId();
-        LocalDateTime lastCreateTime = historyQueryRequest.getLastCreateTime();
+        Long lastHistoryId = historyQueryRequest.getLastId();
         ThrowUtils.throwIf(appId == null, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
         QueryWrapper queryWrapper = QueryWrapper.create();
         queryWrapper.eq(History::getAppId, appId)
-                .lt(History::getCreateTime, lastCreateTime, lastCreateTime != null)
-                .orderBy(History::getCreateTime, false);
+                .lt(History::getId, lastHistoryId, lastHistoryId != null)
+                .orderBy(History::getId, false);
         Page<History> page = page(Page.of(1, historyQueryRequest.getPageSize()), queryWrapper);
-        return PageResult.page(page);
+        List<History> records = page.getRecords();
+        return PageResult.page(page, records);
     }
 
     @Override

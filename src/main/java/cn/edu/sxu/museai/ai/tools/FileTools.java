@@ -14,9 +14,9 @@ import java.io.File;
 
 @Slf4j
 public class FileTools {
-    @Tool("将内容写入文件")
+    @Tool("将内容写入文件。调用后若文件不存在，则直接创建文件+写入文件的内容。如果文件存在，则覆盖文件中的内容")
     public String writeFile(@P("写入文件的相对路径") String relativePath,
-                            @P("写入文件的内容") String content,
+                            @P("写入文件的内容，内容不能为空") String content,
                             @ToolMemoryId Long memoryId) {
         try {
             String absPath = AppConstant.CODE_BATH_PATH + "/" + CodeGenTypeEnum.VUE.getValue() + "/" + memoryId + "/" + relativePath;

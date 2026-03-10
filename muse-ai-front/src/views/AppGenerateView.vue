@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, computed, nextTick, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -24,7 +24,7 @@ import { API_BASE_URL } from '@/request'
 import { useUserStore } from '@/stores/user'
 import { listMyApps, deployApp, updateAppName, downloadApp, getAppDetail } from '@/api/appController'
 import { getHistory } from '@/api/historyController'
-import type { AppVO } from '@/api/typings.d'
+import type { AppVO, ToolExecutionRequest } from '@/api/typings.d'
 
 // 初始化 markdown-it
 const md = new MarkdownIt({
@@ -62,7 +62,7 @@ const codeGenType = ref<string>('multi-file')
 // 聊天历史加载状态
 const isLoadingHistory = ref(false)
 const hasMoreHistory = ref(true)
-const oldestCreateTime = ref<string>('')
+const oldestHistoryId = ref<number>(0)
 const historyTotalCount = ref<number>(0)
 
 // 菜单相关
@@ -161,12 +161,59 @@ const loadingApps = ref(false)
 // 聊天相关
 type MessageContent = string | Ref<string>
 
+// 消息类型
+type MessageType = 'user' | 'assistant' | 'tool_request' | 'tool_executed'
+
+// 工具请求消息
+interface ToolRequestMessage {
+  type: 'tool_request'
+  toolName: string
+  toolArguments?: string
+  toolId?: string
+}
+
+// 工具执行结果消息
+interface ToolExecutedMessage {
+  type: 'tool_executed'
+  toolName: string
+  toolOutput: string
+  toolArguments?: string
+  toolId?: string
+}
+
 interface Message {
-  role: 'user' | 'assistant'
+  id?: string
+  role: MessageType
   content: MessageContent
+  thinking?: string  // AI思考过程
+  toolRequest?: ToolRequestMessage[]
+  toolExecuted?: ToolExecutedMessage
+}
+
+// 消息 ID 计数器，用于生成唯一 ID
+let messageIdCounter = 0
+
+// 生成消息唯一 ID
+const generateMessageId = (): string => {
+  return `msg_${Date.now()}_${messageIdCounter++}`
 }
 
 const messages = ref<Message[]>([])
+
+// 工具参数折叠状态
+const collapsedToolArgs = ref<Set<string>>(new Set())
+
+// 切换工具参数折叠状态
+const toggleToolArgs = (index: number | string) => {
+  const key = String(index)
+  if (collapsedToolArgs.value.has(key)) {
+    collapsedToolArgs.value.delete(key)
+  } else {
+    collapsedToolArgs.value.add(key)
+  }
+  // 触发响应式更新
+  collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+}
 const currentInput = ref('')
 const isGenerating = ref(false)
 const chatContainer = ref<HTMLElement>()
@@ -486,12 +533,119 @@ const sendChatRequest = async (userMessage: string) => {
   await nextTick()
   scrollToBottom()
 
-  const currentResponse = ref('')
+  let currentResponse = ref('')
+  let currentThinking = ref('')  // 思考过程累积
+  let inThinking = false  // 是否在思考标签内
+  let thinkingBuffer = ''  // 思考内容缓冲
+  let hasToolExecuted = false  // 是否已经执行过工具（用于判断是否需要创建新气泡）
+  let hasCreatedAIMessageAfterTool = false  // 在工具执行后是否已经创建过 AI 气泡（避免连续 TOOL_EXECUTED 创建多余气泡）
 
   messages.value.push({
+    id: generateMessageId(),
     role: 'assistant',
     content: currentResponse,
   })
+
+  // 获取当前AI消息的引用，用于更新思考内容
+  const getCurrentAIMessage = () => {
+    return messages.value[messages.value.length - 1]
+  }
+
+  // 开始新的AI回复气泡（仅当当前气泡有内容时才创建新气泡）
+  const startNewAIMessage = () => {
+    // 检查最后一个消息是否是空的 AI 气泡
+    const lastMsg = messages.value[messages.value.length - 1]
+    const isEmptyAIBubble = lastMsg && lastMsg.role === 'assistant' && !getMessageContent(lastMsg) && !lastMsg.thinking
+
+    // 如果最后是空 AI 气泡，重用它的响应引用；否则创建新气泡
+    if (isEmptyAIBubble) {
+      currentResponse = lastMsg.content as Ref<string>
+    } else {
+      currentResponse = ref('')
+      messages.value.push({
+        id: generateMessageId(),
+        role: 'assistant',
+        content: currentResponse,
+      })
+    }
+    hasToolExecuted = false  // 重置标志
+    inThinking = false  // 重置思考状态
+    thinkingBuffer = ''  // 重置思考缓冲
+  }
+
+  // 在工具执行后准备接收新的 AI 消息（延迟创建气泡）
+  const startAIMessageAfterTool = () => {
+    // 如果已经创建过预备气泡，直接重用
+    if (hasCreatedAIMessageAfterTool) {
+      return
+    }
+
+    // 只设置标志，延迟创建实际气泡
+    // 不立即创建空气泡，等待 processTextContent 中有内容时再创建
+    hasCreatedAIMessageAfterTool = true
+    // 注意：不重置 hasToolExecuted，让 processTextContent 检测到并创建新气泡
+    inThinking = false  // 重置思考状态
+    thinkingBuffer = ''  // 重置思考缓冲
+
+    // 注意：不在这里创建气泡，而是让 processTextContent 在有内容时调用 startNewAIMessage
+  }
+
+  // 处理文本内容，分离思考过程和普通内容
+  const processTextContent = (text: string) => {
+    // 如果在工具执行后收到TEXT，且不是思考标签，则创建新气泡
+    if (hasToolExecuted && !inThinking && !text.includes('<thinking>')) {
+      startNewAIMessage()
+      hasCreatedAIMessageAfterTool = false  // 重置标志，允许后续工具创建新气泡
+    }
+
+    let result = ''
+    let remaining = text
+
+    while (remaining.length > 0) {
+      if (inThinking) {
+        // 查找思考结束标签
+        const endTagIndex = remaining.indexOf('</thinking>')
+        if (endTagIndex !== -1) {
+          // 找到结束标签，结束思考模式
+          thinkingBuffer += remaining.substring(0, endTagIndex)
+          inThinking = false
+          // 更新消息的思考内容
+          const msg = getCurrentAIMessage()
+          if (msg) {
+            msg.thinking = thinkingBuffer.trim()
+            msg._thinkingCollapsed = false  // 默认展开
+          }
+          thinkingBuffer = ''
+          remaining = remaining.substring(endTagIndex + 12)  // 跳过 </thinking>
+        } else {
+          // 整个剩余内容都是思考内容
+          thinkingBuffer += remaining
+          // 实时更新思考内容
+          const msg = getCurrentAIMessage()
+          if (msg) {
+            msg.thinking = thinkingBuffer.trim()
+            msg._thinkingCollapsed = false
+          }
+          remaining = ''
+        }
+      } else {
+        // 查找思考开始标签
+        const startTagIndex = remaining.indexOf('<thinking>')
+        if (startTagIndex !== -1) {
+          // 找到开始标签，将前面的内容作为普通内容
+          result += remaining.substring(0, startTagIndex)
+          inThinking = true
+          remaining = remaining.substring(startTagIndex + 10)  // 跳过 <thinking>
+        } else {
+          // 没有思考标签，全部作为普通内容
+          result += remaining
+          remaining = ''
+        }
+      }
+    }
+
+    return result
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/app/chat`, {
@@ -550,8 +704,74 @@ const sendChatRequest = async (userMessage: string) => {
           messages.value.pop() // 移除刚才添加的 assistant 消息
           return
         }
-        // 如果是正常数据，添加到响应中
-        if (parsed.v !== undefined) {
+        // 处理标准消息格式
+        if (parsed.jsonViewType !== undefined) {
+          switch (parsed.jsonViewType) {
+            case 'TEXT':
+              if (parsed.v !== undefined) {
+                const processedContent = processTextContent(parsed.v)
+                currentResponse.value += processedContent
+                smartScroll()
+              }
+              break
+            case 'FINISH':
+              isGenerating.value = false
+              break
+            case 'TOOL_REQUEST':
+              if (parsed.toolName) {
+                // 将工具请求附加到当前 AI 消息
+                const currentMsg = getCurrentAIMessage()
+                if (currentMsg && currentMsg.role === 'assistant') {
+                  if (!currentMsg.toolRequest) {
+                    currentMsg.toolRequest = []
+                  }
+                  const msgId = currentMsg.id
+                  const toolReqIndex = currentMsg.toolRequest.length
+                  currentMsg.toolRequest.push({
+                    type: 'tool_request',
+                    toolName: parsed.toolName,
+                    toolArguments: parsed.v,
+                    toolId: parsed.toolId,
+                  })
+                  // 如果有参数，默认收起
+                  if (parsed.v) {
+                    collapsedToolArgs.value.add(String(msgId + '-req-' + toolReqIndex))
+                    collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+                  }
+                }
+                smartScroll()
+              }
+              break
+            case 'TOOL_EXECUTED':
+              if (parsed.toolName) {
+                hasToolExecuted = true  // 标记已执行工具
+                const toolExecutedMsg: ToolExecutedMessage = {
+                  type: 'tool_executed',
+                  toolName: parsed.toolName,
+                  toolOutput: parsed.toolOutput || '',
+                  toolArguments: parsed.v,
+                  toolId: parsed.toolId,
+                }
+                const msgId = generateMessageId()
+                messages.value.push({
+                  id: msgId,
+                  role: 'tool_executed',
+                  content: '',
+                  toolExecuted: toolExecutedMsg,
+                })
+                // 如果有参数，默认收起
+                if (parsed.v) {
+                  collapsedToolArgs.value.add(msgId)
+                  collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+                }
+                // 创建新的 assistant 消息，为下一个 TEXT 流做准备
+                startAIMessageAfterTool()
+                smartScroll()
+              }
+              break
+          }
+        } else if (parsed.v !== undefined) {
+          // 兼容旧格式
           currentResponse.value += parsed.v
           smartScroll()
         }
@@ -588,10 +808,80 @@ const sendChatRequest = async (userMessage: string) => {
         try {
           const parsed = JSON.parse(jsonStr)
 
-          if (parsed.v !== undefined) {
+          // 处理标准消息格式
+          if (parsed.jsonViewType !== undefined) {
+            switch (parsed.jsonViewType) {
+              case 'TEXT':
+                // 文本消息，流式输出
+                if (parsed.v !== undefined) {
+                  const processedContent = processTextContent(parsed.v)
+                  currentResponse.value += processedContent
+                  smartScroll()
+                }
+                break
+              case 'FINISH':
+                // 消息结束
+                isGenerating.value = false
+                break
+              case 'TOOL_REQUEST':
+                // AI申请调用工具 - 附加到当前 AI 消息
+                if (parsed.toolName) {
+                  const currentMsg = getCurrentAIMessage()
+                  if (currentMsg && currentMsg.role === 'assistant') {
+                    if (!currentMsg.toolRequest) {
+                      currentMsg.toolRequest = []
+                    }
+                    const msgId = currentMsg.id
+                    const toolReqIndex = currentMsg.toolRequest.length
+                    currentMsg.toolRequest.push({
+                      type: 'tool_request',
+                      toolName: parsed.toolName,
+                      toolId: parsed.toolId,
+                    })
+                    // 如果有参数，默认收起
+                    if (parsed.v && shouldCollapseArgs(parsed.v)) {
+                      collapsedToolArgs.value.add(String(msgId + '-req-' + toolReqIndex))
+                    }
+                  }
+                  smartScroll()
+                }
+                break
+              case 'TOOL_EXECUTED':
+                // 工具调用结果
+                if (parsed.toolName) {
+                  hasToolExecuted = true  // 标记已执行工具
+                  const toolExecutedMsg: ToolExecutedMessage = {
+                    type: 'tool_executed',
+                    toolName: parsed.toolName,
+                    toolOutput: parsed.toolOutput || '',
+                    toolArguments: parsed.v,
+                    toolId: parsed.toolId,
+                  }
+                  // 添加工具执行结果消息
+                  const msgId = generateMessageId()
+                  messages.value.push({
+                    id: msgId,
+                    role: 'tool_executed',
+                    content: '',
+                    toolExecuted: toolExecutedMsg,
+                  })
+                  // 如果参数很长，默认折叠
+                  if (parsed.v && shouldCollapseArgs(parsed.v)) {
+                    collapsedToolArgs.value.add(msgId)
+                    collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+                  }
+                  // 创建新的 assistant 消息，为下一个 TEXT 流做准备
+                  startAIMessageAfterTool()
+                  smartScroll()
+                }
+                break
+            }
+          } else if (parsed.v !== undefined) {
+            // 兼容旧格式
             currentResponse.value += parsed.v
             smartScroll()
           } else if (parsed.e === 'end') {
+            // 兼容旧格式
             isGenerating.value = false
             break
           }
@@ -608,11 +898,76 @@ const sendChatRequest = async (userMessage: string) => {
       }
       try {
         const parsed = JSON.parse(jsonStr)
-        if (parsed.v !== undefined) {
-          currentResponse.value += parsed.v
+        if (parsed.jsonViewType !== undefined) {
+          switch (parsed.jsonViewType) {
+            case 'TEXT':
+              if (parsed.v !== undefined) {
+                const processedContent = processTextContent(parsed.v)
+                currentResponse.value += processedContent
+              }
+              break
+            case 'FINISH':
+              isGenerating.value = false
+              break
+            case 'TOOL_REQUEST':
+              if (parsed.toolName) {
+                // 将工具请求附加到当前 AI 消息
+                const currentMsg = getCurrentAIMessage()
+                if (currentMsg && currentMsg.role === 'assistant') {
+                  if (!currentMsg.toolRequest) {
+                    currentMsg.toolRequest = []
+                  }
+                  const msgId = currentMsg.id
+                  const toolReqIndex = currentMsg.toolRequest.length
+                  currentMsg.toolRequest.push({
+                    type: 'tool_request',
+                    toolName: parsed.toolName,
+                    toolArguments: parsed.v,
+                    toolId: parsed.toolId,
+                  })
+                  // 如果有参数，默认收起
+                  if (parsed.v) {
+                    collapsedToolArgs.value.add(String(msgId + '-req-' + toolReqIndex))
+                    collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+                  }
+                }
+              }
+              break
+            case 'TOOL_EXECUTED':
+              if (parsed.toolName) {
+                hasToolExecuted = true  // 标记已执行工具
+                const toolExecutedMsg: ToolExecutedMessage = {
+                  type: 'tool_executed',
+                  toolName: parsed.toolName,
+                  toolOutput: parsed.toolOutput || '',
+                  toolArguments: parsed.v,
+                  toolId: parsed.toolId,
+                }
+                const msgId = generateMessageId()
+                messages.value.push({
+                  id: msgId,
+                  role: 'tool_executed',
+                  content: '',
+                  toolExecuted: toolExecutedMsg,
+                })
+                // 如果有参数，默认收起
+                if (parsed.v) {
+                  collapsedToolArgs.value.add(msgId)
+                  collapsedToolArgs.value = new Set(collapsedToolArgs.value)
+                }
+                // 创建新的 assistant 消息，为下一个 TEXT 流做准备
+                startAIMessageAfterTool()
+              }
+              break
+          }
+        } else if (parsed.v !== undefined) {
+          const processedContent = processTextContent(parsed.v)
+          currentResponse.value += processedContent
         }
       } catch {
-        currentResponse.value += jsonStr
+        // 非 JSON 数据，直接处理
+        const processedContent = processTextContent(jsonStr)
+        currentResponse.value += processedContent
       }
     }
   } catch (error: any) {
@@ -620,6 +975,15 @@ const sendChatRequest = async (userMessage: string) => {
     message.error(error.message || '生成失败，请重试')
     currentResponse.value += `\n[生成失败: ${error.message}]`
   } finally {
+    // 如果还在思考标签内，需要结束并保存思考内容
+    if (inThinking && thinkingBuffer) {
+      const msg = getCurrentAIMessage()
+      if (msg) {
+        msg.thinking = thinkingBuffer.trim()
+        msg._thinkingCollapsed = false
+      }
+    }
+
     isGenerating.value = false
     isCodeGenerated.value = true
     // 生成完成后尝试显示预览
@@ -640,6 +1004,45 @@ const getMessageContent = (msg: any) => {
   return msg.content?.value || ''
 }
 
+// 提取思考过程
+const extractThinking = (content: string): { thinking: string; content: string } => {
+  const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g
+  const match = thinkingRegex.exec(content)
+  if (match) {
+    return {
+      thinking: match[1].trim(),
+      content: content.replace(match[0], '').trim()
+    }
+  }
+  return { thinking: '', content }
+}
+
+// 判断是否应该折叠参数（长度超过200字符）
+const shouldCollapseArgs = (args: string): boolean => {
+  if (!args) return false
+  return args.length > 200
+}
+
+// 格式化工具参数为漂亮的 JSON 格式
+const formatToolArguments = (toolArgs: string): string => {
+  if (!toolArgs) return ''
+  try {
+    // 先解析 JSON 字符串
+    const parsed = JSON.parse(toolArgs)
+    // 再格式化为带缩进的 JSON，\n 会成为真正的换行符
+    return JSON.stringify(parsed, null, 2)
+  } catch {
+    // 解析失败则返回原字符串
+    return toolArgs
+  }
+}
+
+// 格式化工具参数（截断版本，用于折叠时显示）
+const formatToolArgumentsPreview = (toolArgs: string): string => {
+  const formatted = formatToolArguments(toolArgs)
+  return formatted.length > 150 ? formatted.substring(0, 150) + '...' : formatted
+}
+
 // 加载聊天历史记录
 const loadHistory = async (loadMore = false) => {
   if (!appId.value || isLoadingHistory.value) return
@@ -651,7 +1054,7 @@ const loadHistory = async (loadMore = false) => {
       historyQueryRequest: {
         appId: appId.value,
         pageSize: 10,
-        lastCreateTime: loadMore && oldestCreateTime.value ? oldestCreateTime.value : undefined,
+        lastId: loadMore && oldestHistoryId.value ? oldestHistoryId.value : undefined,
       },
     })
 
@@ -660,17 +1063,102 @@ const loadHistory = async (loadMore = false) => {
       historyTotalCount.value = res.data.data.total || 0
 
       if (historyList.length > 0) {
-        // 更新最老消息的创建时间（用于分页）
-        // 后端返回倒序数据（最新的在前），所以取最后一个元素的时间
-        oldestCreateTime.value = historyList[historyList.length - 1].createTime || ''
+        // 后端返回倒序数据（最新的在前），需要反转成正序（从旧到新）
+        const reversedList = [...historyList].reverse()
 
-        // 将历史记录转换为消息格式（按时间正序）
-        const newMessages = historyList.map((item) => ({
-          role: item.messageType === 'USER' ? 'user' : 'assistant',
-          content: item.message || '',
-        }))
+        // 更新最老消息的ID（用于分页）- 反转后第一个元素是最早的
+        if (reversedList.length > 0) {
+          oldestHistoryId.value = reversedList[0].id || 0
+        }
+
+        // 将历史记录转换为消息格式
+        const newMessages: Message[] = []
+
+        reversedList.forEach((item) => {
+          const messageType = item.messageType
+
+          if (messageType === 'USER') {
+            // 用户消息
+            newMessages.push({
+              id: String(item.id),
+              role: 'user',
+              content: item.message || '',
+            })
+          } else if (messageType === 'AI') {
+            // AI消息
+            const aiMessage: Message = {
+              id: String(item.id),
+              role: 'assistant',
+              content: item.message || '',
+            }
+
+            // 解析 toolExecutionRequests，附加到 AI 消息的 toolRequest 字段
+            if (item.toolExecutionRequests) {
+              try {
+                const toolRequests = JSON.parse(item.toolExecutionRequests) as ToolExecutionRequest[]
+                if (Array.isArray(toolRequests) && toolRequests.length > 0) {
+                  aiMessage.toolRequest = toolRequests
+                    .filter(req => req.toolName)
+                    .map((req, idx) => {
+                      // 如果有参数，默认收起 - 使用消息 ID
+                      if (req.arguments) {
+                        const key = `${aiMessage.id}-req-${idx}`
+                        collapsedToolArgs.value.add(key)
+                      }
+                      return {
+                        type: 'tool_request' as const,
+                        toolName: req.toolName || '',
+                        toolArguments: req.arguments,
+                        toolId: req.toolId,
+                      }
+                    })
+                }
+              } catch (e) {
+                console.error('解析 toolExecutionRequests 失败', e)
+              }
+            }
+
+            newMessages.push(aiMessage)
+          } else if (messageType === 'TOOL_EXECUTED') {
+            // 工具执行结果消息
+            // message 字段包含 JSON: { toolName, toolOutput, arguments, toolId }
+            let toolName = '未知工具'
+            let toolOutput = ''
+            let toolArguments: string | undefined
+            let toolId: string | undefined
+
+            try {
+              const parsed = JSON.parse(item.message || '{}')
+              if (parsed.toolName) toolName = parsed.toolName
+              if (parsed.toolOutput) toolOutput = parsed.toolOutput
+              if (parsed.arguments) toolArguments = parsed.arguments
+              if (parsed.toolId) toolId = parsed.toolId
+            } catch {
+              // 解析失败，使用默认值
+            }
+
+            // 如果有参数，默认收起 - 使用消息 ID
+            if (toolArguments) {
+              collapsedToolArgs.value.add(String(item.id))
+            }
+
+            newMessages.push({
+              id: String(item.id),
+              role: 'tool_executed' as const,
+              content: '',
+              toolExecuted: {
+                type: 'tool_executed',
+                toolName,
+                toolOutput,
+                toolArguments,
+                toolId,
+              },
+            })
+          }
+        })
 
         if (loadMore) {
+          // 使用消息 ID 后，不再需要索引更新逻辑
           // 加载更多：将新消息插入到数组开头
           messages.value = [...newMessages, ...messages.value]
         } else {
@@ -708,7 +1196,7 @@ const initAppData = async (newAppId?: string) => {
     appId.value = targetAppId
     messages.value = []
     hasMoreHistory.value = true
-    oldestCreateTime.value = ''
+    oldestHistoryId.value = 0
     historyTotalCount.value = 0
   }
 
@@ -982,7 +1470,7 @@ const handleCodeGenTypeChange = (type: string) => {
           </div>
 
           <!-- AI 消息 -->
-          <div v-else class="ai-message">
+          <div v-else-if="msg.role === 'assistant'" class="ai-message">
             <div class="message-avatar ai-avatar">
               <img src="/favicon-static.svg" alt="AI" />
             </div>
@@ -997,7 +1485,94 @@ const handleCodeGenTypeChange = (type: string) => {
                   <CopyOutlined />
                 </button>
               </div>
+              <!-- 思考过程 -->
+              <div v-if="msg.thinking" class="thinking-section">
+                <div class="thinking-header" @click="msg._thinkingCollapsed = !msg._thinkingCollapsed">
+                  <span class="thinking-title">
+                    <SyncOutlined class="thinking-icon" />
+                    思考过程
+                  </span>
+                  <span class="thinking-toggle">{{ msg._thinkingCollapsed ? '展开' : '收起' }}</span>
+                </div>
+                <div v-show="!msg._thinkingCollapsed" class="thinking-content">
+                  {{ msg.thinking }}
+                </div>
+              </div>
+              <!-- 消息内容 -->
               <div class="bubble-content markdown-content" v-html="renderMarkdown(getMessageContent(msg))"></div>
+
+              <!-- 工具调用请求 -->
+              <div v-if="msg.toolRequest && msg.toolRequest.length > 0" class="ai-tool-requests">
+                <div v-for="(tool, idx) in msg.toolRequest" :key="idx" class="tool-request-item-inline-compact">
+                  <div class="tool-request-header-compact">
+                    <span class="tool-request-name">🔧 {{ tool.toolName }}</span>
+                    <span class="tool-badge">REQUEST</span>
+                  </div>
+                  <!-- 可折叠的参数 -->
+                  <div v-if="tool.toolArguments" class="tool-request-arguments-compact">
+                    <div class="tool-arguments-header">
+                      <span class="tool-arguments-label">📋 参数</span>
+                      <span
+                        v-if="shouldCollapseArgs(tool.toolArguments)"
+                        class="tool-arguments-toggle"
+                        @click="toggleToolArgs(msg.id + '-req-' + idx)"
+                      >
+                        {{ collapsedToolArgs.has(String(msg.id + '-req-' + idx)) ? '展开' : '收起' }}
+                      </span>
+                    </div>
+                    <div class="tool-arguments-value">
+                      <!-- 折叠时显示截断版本 -->
+                      <template v-if="shouldCollapseArgs(tool.toolArguments) && collapsedToolArgs.has(String(msg.id + '-req-' + idx))">
+                        {{ formatToolArgumentsPreview(tool.toolArguments) }}
+                      </template>
+                      <!-- 展开时显示完整版本 -->
+                      <template v-else>
+                        {{ formatToolArguments(tool.toolArguments) }}
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 工具执行结果消息 -->
+          <div v-else-if="msg.role === 'tool_executed'" class="tool-executed-message">
+            <div class="tool-executed-avatar">
+              <CheckOutlined />
+            </div>
+            <div class="tool-executed-bubble">
+              <div class="tool-executed-header">
+                <span class="tool-executed-name">✅ {{ msg.toolExecuted?.toolName }}</span>
+                <span class="tool-badge success">DONE</span>
+              </div>
+              <!-- 可折叠的参数 -->
+              <div v-if="msg.toolExecuted?.toolArguments" class="tool-executed-arguments">
+                <div class="tool-arguments-header">
+                  <span class="tool-arguments-label">📋 参数</span>
+                  <span
+                    v-if="shouldCollapseArgs(msg.toolExecuted.toolArguments)"
+                    class="tool-arguments-toggle"
+                    @click="toggleToolArgs(msg.id)"
+                  >
+                    {{ collapsedToolArgs.has(String(msg.id)) ? '展开' : '收起' }}
+                  </span>
+                </div>
+                <div class="tool-arguments-value">
+                  <!-- 折叠时显示截断版本 -->
+                  <template v-if="shouldCollapseArgs(msg.toolExecuted.toolArguments) && collapsedToolArgs.has(String(msg.id))">
+                    {{ formatToolArgumentsPreview(msg.toolExecuted.toolArguments) }}
+                  </template>
+                  <!-- 展开时显示完整版本 -->
+                  <template v-else>
+                    {{ formatToolArguments(msg.toolExecuted.toolArguments) }}
+                  </template>
+                </div>
+              </div>
+              <div class="tool-executed-result">
+                <div class="tool-result-title">📤 执行结果</div>
+                <div class="tool-result-content">{{ msg.toolExecuted?.toolOutput || '✓ 执行成功' }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1710,6 +2285,7 @@ const handleCodeGenTypeChange = (type: string) => {
 /* ===== 消息气泡 ===== */
 .message-bubble {
   max-width: calc(100% - 48px);
+  max-width: 65%;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1752,6 +2328,399 @@ const handleCodeGenTypeChange = (type: string) => {
 .user-bubble .bubble-content {
   color: var(--bg-primary);
   font-weight: 500;
+}
+
+/* ===== 思考过程 ===== */
+.thinking-section {
+  margin: 8px 12px;
+  border: 1px solid rgba(0, 210, 106, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.05) 0%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(0, 210, 106, 0.1);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.thinking-header:hover {
+  background: rgba(0, 210, 106, 0.15);
+}
+
+.thinking-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #00d26a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.thinking-icon {
+  font-size: 11px;
+  animation: spin 2s linear infinite;
+}
+
+.thinking-toggle {
+  font-size: 11px;
+  color: #00d26a;
+  padding: 2px 8px;
+  background: rgba(0, 210, 106, 0.2);
+  border-radius: 4px;
+}
+
+.thinking-content {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #b0b0b0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  font-style: italic;
+  border-top: 1px solid rgba(0, 210, 106, 0.15);
+}
+
+/* ===== 单独的工具请求消息 ===== */
+.tool-request-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tool-request-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.15) 0%, rgba(0, 210, 106, 0.05) 100%);
+  border: 2px solid rgba(0, 210, 106, 0.5);
+  color: #00d26a;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.tool-request-bubble {
+  flex: 1;
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.08) 0%, rgba(26, 26, 26, 1) 100%);
+  border: 1px solid rgba(0, 210, 106, 0.3);
+  border-left: 3px solid #00d26a;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 400px;
+}
+
+.tool-request-bubble-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 210, 106, 0.2);
+  background: rgba(0, 210, 106, 0.1);
+}
+
+.tool-request-bubble-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00d26a;
+}
+
+.tool-request-item-inline {
+  padding: 10px 14px;
+}
+
+.tool-request-name {
+  font-size: 14px;
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 500;
+}
+
+/* ===== 工具请求列表 ===== */
+.tool-requests-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.tool-requests-title {
+  font-size: 11px;
+  color: #00d26a;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-requests-title .title-icon {
+  font-size: 12px;
+}
+
+.tool-request-item {
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.08) 0%, rgba(0, 210, 106, 0.03) 100%);
+  border: 1px solid rgba(0, 210, 106, 0.3);
+  border-left: 3px solid #00d26a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.tool-request-item:last-child {
+  margin-bottom: 0;
+}
+
+.tool-request-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-request-header .tool-icon {
+  color: #00d26a;
+  font-size: 14px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.tool-request-header .tool-name {
+  font-size: 14px;
+  color: #00d26a;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 600;
+  flex: 1;
+}
+
+.tool-badge {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 210, 106, 0.2);
+  color: #00d26a;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tool-badge.success {
+  background: rgba(0, 210, 106, 0.2);
+  color: #00d26a;
+}
+
+/* ===== AI 消息内的工具请求 ===== */
+.ai-tool-requests {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 210, 106, 0.2);
+}
+
+.tool-request-item-inline-compact {
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.08) 0%, rgba(0, 210, 106, 0.03) 100%);
+  border: 1px solid rgba(0, 210, 106, 0.25);
+  border-left: 3px solid #00d26a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.tool-request-item-inline-compact:last-child {
+  margin-bottom: 0;
+}
+
+.tool-request-header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tool-request-header-compact .tool-request-name {
+  font-size: 13px;
+  color: #00d26a;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 600;
+}
+
+.tool-request-arguments-compact {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.tool-arguments {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+.tool-arguments-label {
+  color: #00d26a;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.tool-arguments-value {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  color: #e0e0e0;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ===== 工具执行结果消息 ===== */
+.tool-executed-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.tool-executed-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.2) 0%, rgba(0, 210, 106, 0.1) 100%);
+  border: 2px solid #00d26a;
+  color: #00d26a;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.tool-executed-bubble {
+  flex: 1;
+  background: linear-gradient(135deg, rgba(0, 210, 106, 0.05) 0%, rgba(26, 26, 26, 1) 100%);
+  border: 1px solid rgba(0, 210, 106, 0.3);
+  border-left: 3px solid #00d26a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tool-executed-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 210, 106, 0.2);
+  background: rgba(0, 210, 106, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tool-executed-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #00d26a;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.tool-executed-arguments {
+  padding: 0;
+  font-size: 12px;
+  color: #b0b0b0;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(0, 210, 106, 0.15);
+}
+
+.tool-arguments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+}
+
+.tool-arguments-label {
+  color: #00d26a;
+  font-weight: 600;
+}
+
+.tool-arguments-toggle {
+  font-size: 10px;
+  color: #00d26a;
+  padding: 3px 8px;
+  background: rgba(0, 210, 106, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.tool-arguments-toggle:hover {
+  background: rgba(0, 210, 106, 0.3);
+}
+
+.tool-executed-arguments .tool-arguments-value {
+  padding: 0 16px 12px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  color: #e0e0e0;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.tool-result-title {
+  font-size: 11px;
+  color: #00d26a;
+  padding: 10px 16px 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.tool-result-content {
+  padding: 12px;
+  font-size: 13px;
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  margin: 0 16px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 210, 106, 0.2);
+}
+
+.tool-result-content:empty::before {
+  content: '✓ 执行成功';
+  color: #00d26a;
+  font-weight: 500;
+}
+
+/* 滚动条样式 */
+.tool-result-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tool-result-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.tool-result-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 106, 0.3);
+  border-radius: 3px;
+}
+
+.tool-result-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 210, 106, 0.5);
 }
 
 /* ===== 复制按钮 ===== */
