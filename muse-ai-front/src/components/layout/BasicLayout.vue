@@ -288,7 +288,7 @@ const handleSaveProfile = async () => {
 
 /* ===== Header ===== */
 .header {
-  background: var(--bg-header);
+  background: var(--bg-primary);
   padding: 0;
   position: sticky;
   top: 0;
@@ -488,7 +488,7 @@ const handleSaveProfile = async () => {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 16px;
   font-weight: 600;
-  color: var(--bg-header);
+  color: var(--bg-primary);
 }
 
 .user-divider {
@@ -570,7 +570,7 @@ const handleSaveProfile = async () => {
 /* ===== Footer ===== */
 .footer {
   text-align: center;
-  background: var(--bg-header);
+  background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
   color: var(--text-muted);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
