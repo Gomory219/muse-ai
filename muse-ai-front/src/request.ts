@@ -1,43 +1,9 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
+import { convertIdsToString } from '@/utils/format'
 
 // API 基础地址
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7777/api'
-
-// 需要转换为字符串的 ID 字段名
-const ID_FIELDS = ['id', 'userId', 'appId', 'ownerId']
-
-/**
- * 递归转换对象中的 ID 字段为字符串，防止 JavaScript 大整数精度丢失
- */
-function convertIdsToString(data: any): any {
-  if (data === null || data === undefined) {
-    return data
-  }
-
-  // 处理数组
-  if (Array.isArray(data)) {
-    return data.map(convertIdsToString)
-  }
-
-  // 处理对象
-  if (typeof data === 'object') {
-    const result: any = {}
-    for (const key in data) {
-      if (Object.prototype.hasOwnProperty.call(data, key)) {
-        // 如果是 ID 字段且是数字，转换为字符串
-        if (ID_FIELDS.includes(key) && typeof data[key] === 'number') {
-          result[key] = String(data[key])
-        } else {
-          result[key] = convertIdsToString(data[key])
-        }
-      }
-    }
-    return result
-  }
-
-  return data
-}
 
 // 创建 Axios 实例
 const myAxios = axios.create({

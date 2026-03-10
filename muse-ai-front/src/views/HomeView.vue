@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { SendOutlined, RightOutlined, FireOutlined, AppstoreOutlined } from '@ant-design/icons-vue'
@@ -27,7 +27,7 @@ const myApps = ref<API.AppVO[]>([])
 const myAppsLoading = ref(false)
 
 // 精选案例
-const featuredApps = ref<AppVO[]>([])
+const featuredApps = ref<API.AppVO[]>([])
 const featuredAppsLoading = ref(false)
 
 // 发送按钮状态
@@ -150,6 +150,11 @@ onMounted(() => {
 // 监听登录状态变化
 const unwatch = userStore.$subscribe(() => {
   loadMyApps()
+})
+
+// 组件卸载时取消订阅
+onUnmounted(() => {
+  unwatch()
 })
 </script>
 
@@ -334,19 +339,7 @@ const unwatch = userStore.$subscribe(() => {
 </template>
 
 <style scoped>
-/* ===== CSS 变量 ===== */
 .home-page {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-card: #1a1a1a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --text-muted: #444444;
-  --accent-green: #00d26a;
-  --accent-green-dim: rgba(0, 210, 106, 0.1);
-  --border-color: #2a2a2a;
-  --border-hover: #00d26a;
-
   min-height: 100vh;
   background: var(--bg-primary);
   position: relative;

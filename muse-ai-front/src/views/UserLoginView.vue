@@ -25,7 +25,7 @@ const handleLogin = async () => {
   try {
     const res = await userLogin(loginForm.value)
     if (res.data.code === 0) {
-      userStore.setUser(res.data.data)
+      userStore.setUser(res.data.data ?? null)
       message.success('登录成功')
       router.push('/')
     }
@@ -125,18 +125,7 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* CSS 变量 */
 .login-page {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-card: #1a1a1a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --text-muted: #444444;
-  --accent-green: #00d26a;
-  --accent-green-dim: rgba(0, 210, 106, 0.1);
-  --border-color: #2a2a2a;
-
   position: relative;
   width: 100%;
   height: 100%;

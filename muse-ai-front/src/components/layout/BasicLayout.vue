@@ -260,21 +260,12 @@ const handleSaveProfile = async () => {
 </template>
 
 <style scoped>
-/* ===== CSS 变量 ===== */
 .layout {
-  --bg-header: #0a0a0a;
-  --bg-header-secondary: #111111;
-  --border-color: #2a2a2a;
-  --border-accent: #00d26a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --text-muted: #444444;
-
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-header);
+  background: var(--bg-primary);
 }
 
 .layout.fullscreen {
@@ -347,7 +338,7 @@ const handleSaveProfile = async () => {
 }
 
 .logo-section:hover {
-  background: var(--bg-header-secondary);
+  background: var(--bg-secondary);
 }
 
 .logo {
@@ -368,7 +359,7 @@ const handleSaveProfile = async () => {
 }
 
 .app-name-ai {
-  color: var(--border-accent);
+  color: var(--accent-green);
   font-weight: 400;
 }
 
@@ -390,11 +381,11 @@ const handleSaveProfile = async () => {
 }
 
 .nav-item:hover {
-  background: var(--bg-header-secondary);
+  background: var(--bg-secondary);
 }
 
 .nav-item.active .nav-text {
-  color: var(--border-accent);
+  color: var(--accent-green);
 }
 
 .nav-item.active .nav-indicator {
@@ -415,7 +406,7 @@ const handleSaveProfile = async () => {
   transform: translateX(-50%);
   width: 4px;
   height: 4px;
-  background: var(--border-accent);
+  background: var(--accent-green);
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -443,8 +434,8 @@ const handleSaveProfile = async () => {
 }
 
 .login-btn:hover {
-  border-color: var(--border-accent);
-  color: var(--border-accent);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
   background: rgba(0, 210, 106, 0.05);
 }
 
@@ -454,7 +445,7 @@ const handleSaveProfile = async () => {
 }
 
 .login-btn:hover .btn-bracket {
-  color: var(--border-accent);
+  color: var(--accent-green);
 }
 
 /* ===== 用户区域 ===== */
@@ -463,7 +454,7 @@ const handleSaveProfile = async () => {
   align-items: center;
   gap: 0;
   cursor: pointer;
-  background: var(--bg-header-secondary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 24px 6px 6px 24px;
   padding: 4px 4px 4px 4px;
@@ -472,7 +463,7 @@ const handleSaveProfile = async () => {
 }
 
 .user-card:hover {
-  border-color: var(--border-accent);
+  border-color: var(--accent-green);
 }
 
 .user-avatar {
@@ -480,7 +471,7 @@ const handleSaveProfile = async () => {
   height: 36px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--border-accent);
+  background: var(--accent-green);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -517,7 +508,7 @@ const handleSaveProfile = async () => {
 .user-prompt {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 14px;
-  color: var(--border-accent);
+  color: var(--accent-green);
   font-weight: 600;
 }
 
@@ -748,36 +739,5 @@ const handleSaveProfile = async () => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-</style>
-
-<style>
-/* ===== 全局滚动条样式 ===== */
-/* 滚动条整体 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-/* 滚动条轨道 */
-::-webkit-scrollbar-track {
-  background: #0a0a0a;
-}
-
-/* 滚动条滑块 */
-::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 4px;
-}
-
-/* 滚动条滑块悬停 */
-::-webkit-scrollbar-thumb:hover {
-  background: #00d26a;
-}
-
-/* Firefox 滚动条 */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #2a2a2a #0a0a0a;
 }
 </style>

@@ -206,6 +206,14 @@ const handlePageSizeChange = (size: number) => {
   fetchUsers()
 }
 
+// 处理 select 的 change 事件
+const handleSelectChange = (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  if (target) {
+    handlePageSizeChange(Number(target.value))
+  }
+}
+
 // 跳转到指定页
 const handleJumpToPage = () => {
   const page = parseInt(jumpPageInput.value)
@@ -499,7 +507,7 @@ onUnmounted(() => {
             <div class="page-size-dropdown" @click.stop>
               <select
                 :value="pagination.pageSize"
-                @change="handlePageSizeChange(Number($event.target.value))"
+                @change="handleSelectChange"
                 class="page-size-select"
               >
                 <option v-for="size in pageSizeOptions" :key="size" :value="size">
@@ -723,20 +731,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ===== CSS 变量 ===== */
 .user-manage-container {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-card: #1a1a1a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --text-muted: #444444;
-  --accent-green: #00d26a;
-  --accent-green-dim: rgba(0, 210, 106, 0.1);
-  --border-color: #2a2a2a;
-  --border-hover: #00d26a;
-  --danger-color: #ff4757;
-
   height: 100vh;
   display: flex;
   flex-direction: column;

@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import BasicLayout from '@/layouts/BasicLayout.vue'
+import BasicLayout from '@/components/layout/BasicLayout.vue'
 import { getLoginUser } from '@/api/userController'
 import { useUserStore } from '@/stores/user'
 
@@ -14,11 +14,6 @@ const router = createRouter({
           path: '',
           name: 'home',
           component: () => import('@/views/HomeView.vue'),
-        },
-        {
-          path: 'about',
-          name: 'about',
-          component: () => import('@/views/AboutView.vue'),
         },
         {
           path: 'user/login',
