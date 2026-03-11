@@ -592,19 +592,22 @@ const sendChatRequest = async (userMessage: string) => {
 
   // 处理文本内容，分离思考过程和普通内容
   const processTextContent = (text: string) => {
-    // 如果在工具执行后收到TEXT，且不是思考标签，则创建新气泡
-    if (hasToolExecuted && !inThinking && !text.includes('<thinking>')) {
+    // 如果在工具执行后收到TEXT，先确保有消息对象
+    const thinkTag = String.raw`\x3Cthink\x3E`
+    if (hasToolExecuted && !inThinking) {
+      // 工具执行后，确保有消息对象来接收内容（无论是否包含思考标签）
       startNewAIMessage()
-      hasCreatedAIMessageAfterTool = false  // 重置标志，允许后续工具创建新气泡
+      hasCreatedAIMessageAfterTool = false
     }
-
     let result = ''
     let remaining = text
+    const startTag = '<think>'
+    const endTag = '</think>'
 
     while (remaining.length > 0) {
       if (inThinking) {
         // 查找思考结束标签
-        const endTagIndex = remaining.indexOf('</thinking>')
+        const endTagIndex = remaining.indexOf(endTag)
         if (endTagIndex !== -1) {
           // 找到结束标签，结束思考模式
           thinkingBuffer += remaining.substring(0, endTagIndex)
@@ -616,7 +619,7 @@ const sendChatRequest = async (userMessage: string) => {
             msg._thinkingCollapsed = false  // 默认展开
           }
           thinkingBuffer = ''
-          remaining = remaining.substring(endTagIndex + 12)  // 跳过 </thinking>
+          remaining = remaining.substring(endTagIndex + endTag.length)  // 跳过 </think>
         } else {
           // 整个剩余内容都是思考内容
           thinkingBuffer += remaining
@@ -630,12 +633,12 @@ const sendChatRequest = async (userMessage: string) => {
         }
       } else {
         // 查找思考开始标签
-        const startTagIndex = remaining.indexOf('<thinking>')
+        const startTagIndex = remaining.indexOf(startTag)
         if (startTagIndex !== -1) {
           // 找到开始标签，将前面的内容作为普通内容
           result += remaining.substring(0, startTagIndex)
           inThinking = true
-          remaining = remaining.substring(startTagIndex + 10)  // 跳过 <thinking>
+          remaining = remaining.substring(startTagIndex + startTag.length)  // 跳过 <think>
         } else {
           // 没有思考标签，全部作为普通内容
           result += remaining
@@ -1004,14 +1007,20 @@ const getMessageContent = (msg: any) => {
   return msg.content?.value || ''
 }
 
-// 提取思考过程
+// 提取思考过程 - 从历史消息中提取
 const extractThinking = (content: string): { thinking: string; content: string } => {
-  const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g
-  const match = thinkingRegex.exec(content)
-  if (match) {
+  // 匹配 ...
+
+  const startTag = '<think>'
+  const endTag = '</think>'
+  const startIdx = content.indexOf(startTag)
+  const endIdx = content.indexOf(endTag)
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const thinkingContent = content.substring(startIdx + startTag.length, endIdx)
     return {
-      thinking: match[1].trim(),
-      content: content.replace(match[0], '').trim()
+      thinking: thinkingContent.trim(),
+      content: (content.substring(0, startIdx) + content.substring(endIdx + endTag.length)).trim()
     }
   }
   return { thinking: '', content }
@@ -1085,11 +1094,18 @@ const loadHistory = async (loadMore = false) => {
               content: item.message || '',
             })
           } else if (messageType === 'AI') {
-            // AI消息
+            // AI消息 - 提取思考内容
+            const rawContent = item.message || ''
+            const { thinking, content } = extractThinking(rawContent)
             const aiMessage: Message = {
               id: String(item.id),
               role: 'assistant',
-              content: item.message || '',
+              content: content,
+            }
+            // 如果有思考内容，添加到消息中
+            if (thinking) {
+              aiMessage.thinking = thinking
+              aiMessage._thinkingCollapsed = false  // 默认展开
             }
 
             // 解析 toolExecutionRequests，附加到 AI 消息的 toolRequest 字段
@@ -1487,19 +1503,14 @@ const handleCodeGenTypeChange = (type: string) => {
               </div>
               <!-- 思考过程 -->
               <div v-if="msg.thinking" class="thinking-section">
-                <div class="thinking-header" @click="msg._thinkingCollapsed = !msg._thinkingCollapsed">
-                  <span class="thinking-title">
-                    <SyncOutlined class="thinking-icon" />
-                    思考过程
-                  </span>
-                  <span class="thinking-toggle">{{ msg._thinkingCollapsed ? '展开' : '收起' }}</span>
-                </div>
-                <div v-show="!msg._thinkingCollapsed" class="thinking-content">
-                  {{ msg.thinking }}
-                </div>
+                <div class="thinking-label">思考</div>
+                <div class="thinking-content markdown-content" v-html="renderMarkdown(msg.thinking)"></div>
               </div>
               <!-- 消息内容 -->
-              <div class="bubble-content markdown-content" v-html="renderMarkdown(getMessageContent(msg))"></div>
+              <template v-if="getMessageContent(msg)">
+                <div class="bubble-content markdown-content" v-html="renderMarkdown(getMessageContent(msg))"></div>
+              </template>
+              <div v-else-if="msg.thinking" class="bubble-content-spacer"></div>
 
               <!-- 工具调用请求 -->
               <div v-if="msg.toolRequest && msg.toolRequest.length > 0" class="ai-tool-requests">
@@ -2332,60 +2343,76 @@ const handleCodeGenTypeChange = (type: string) => {
 
 /* ===== 思考过程 ===== */
 .thinking-section {
-  margin: 8px 12px;
-  border: 1px solid rgba(0, 210, 106, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(0, 210, 106, 0.05) 0%, rgba(0, 0, 0, 0.2) 100%);
+  margin: 0 12px 0;
+  padding: 0;
+  position: relative;
 }
 
-.thinking-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(0, 210, 106, 0.1);
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s;
+/* 空内容时的占位符 */
+.bubble-content-spacer {
+  height: 0;
 }
 
-.thinking-header:hover {
-  background: rgba(0, 210, 106, 0.15);
-}
-
-.thinking-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #00d26a;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.thinking-icon {
+.thinking-label {
   font-size: 11px;
-  animation: spin 2s linear infinite;
-}
-
-.thinking-toggle {
-  font-size: 11px;
-  color: #00d26a;
-  padding: 2px 8px;
-  background: rgba(0, 210, 106, 0.2);
-  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.2);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
 }
 
 .thinking-content {
-  padding: 10px 12px;
+  padding-left: 12px;
   font-size: 13px;
-  color: #b0b0b0;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  font-style: italic;
-  border-top: 1px solid rgba(0, 210, 106, 0.15);
+  color: #666;
+  line-height: 1.6;
+  border-left: 2px solid rgba(255, 255, 255, 0.06);
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* 覆盖 markdown 内容样式 */
+.thinking-content :deep(*) {
+  color: #666 !important;
+}
+
+.thinking-content :deep(p) {
+  margin: 0 0 8px 0;
+}
+
+.thinking-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.thinking-content :deep(h1),
+.thinking-content :deep(h2),
+.thinking-content :deep(h3),
+.thinking-content :deep(h4),
+.thinking-content :deep(h5),
+.thinking-content :deep(h6) {
+  color: #777 !important;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 10px 0 6px 0;
+}
+
+.thinking-content :deep(code) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #888 !important;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.thinking-content :deep(pre) {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.thinking-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
 }
 
 /* ===== 单独的工具请求消息 ===== */
