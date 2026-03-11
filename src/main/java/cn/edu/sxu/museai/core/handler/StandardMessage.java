@@ -24,6 +24,8 @@ public class StandardMessage {
      */
     private String toolResult;
 
+    private Boolean success;
+
     public static StandardMessage finishMessage() {
         return StandardMessage.builder()
                 .jsonViewType(JsonViewType.FINISH)

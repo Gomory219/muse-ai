@@ -1,6 +1,8 @@
 package cn.edu.sxu.museai.core.handler;
 
 import cn.edu.sxu.museai.ai.model.message.*;
+import cn.edu.sxu.museai.constant.AppConstant;
+import cn.edu.sxu.museai.core.builder.VueProjectBuilder;
 import cn.edu.sxu.museai.model.entity.History;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.model.enums.MessageTypeEnum;
@@ -29,6 +31,8 @@ import java.util.*;
 public class ToolMessageHandler extends BaseMessageHandler {
     @Resource
     private HistoryService historyService;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * AI 生成的内容如：
@@ -64,6 +68,8 @@ public class ToolMessageHandler extends BaseMessageHandler {
                         .build();
                     historyList.add(history);
                     historyService.saveBatch(historyList);
+                    String projectPath = AppConstant.CODE_BATH_PATH + "/" + codeGenTypeEnum.getValue() + "/" + appId;
+                    vueProjectBuilder.buildProject(projectPath);
                 });
     }
 
@@ -80,6 +86,7 @@ public class ToolMessageHandler extends BaseMessageHandler {
                                 .toolName(toolExecutedMessage.getToolName())
                                 .toolOutput(toolExecutedMessage.getToolOutput())
                                 .arguments(toolExecutedMessage.getArguments())
+                                .success(toolExecutedMessage.getSuccess())
                                 .build();
                         return History.builder()
                                 .message(JSONUtil.toJsonStr(toolMessage))
@@ -134,6 +141,7 @@ public class ToolMessageHandler extends BaseMessageHandler {
                         .jsonViewType(JsonViewType.TOOL_EXECUTED)
                         .toolName(toolExecutedMessage.getToolName())
                         .toolResult(toolExecutedMessage.getToolOutput())
+                        .success(toolExecutedMessage.getSuccess())
                         .v(toolExecutedMessage.getArguments())
                         .build();
                 return JSONUtil.toJsonStr(standardMessage);

@@ -6,6 +6,7 @@ import {
   SendOutlined,
   LoadingOutlined,
   CheckOutlined,
+  CloseOutlined,
   CopyOutlined,
   PlusOutlined,
   DownloadOutlined,
@@ -179,6 +180,7 @@ interface ToolExecutedMessage {
   toolOutput: string
   toolArguments?: string
   toolId?: string
+  success?: boolean  // 工具执行是否成功
 }
 
 interface Message {
@@ -748,12 +750,20 @@ const sendChatRequest = async (userMessage: string) => {
             case 'TOOL_EXECUTED':
               if (parsed.toolName) {
                 hasToolExecuted = true  // 标记已执行工具
+                // 处理 success 字段：支持布尔值和字符串
+                let success = false
+                if (parsed.success === true || parsed.success === 'true') {
+                  success = true
+                } else if (parsed.success === false || parsed.success === 'false') {
+                  success = false
+                }
                 const toolExecutedMsg: ToolExecutedMessage = {
                   type: 'tool_executed',
                   toolName: parsed.toolName,
-                  toolOutput: parsed.toolOutput || '',
+                  toolOutput: parsed.toolOutput || parsed.toolResult || '',  // 支持 toolOutput 和 toolResult
                   toolArguments: parsed.v,
                   toolId: parsed.toolId,
+                  success,  // 解析成功状态
                 }
                 const msgId = generateMessageId()
                 messages.value.push({
@@ -853,12 +863,20 @@ const sendChatRequest = async (userMessage: string) => {
                 // 工具调用结果
                 if (parsed.toolName) {
                   hasToolExecuted = true  // 标记已执行工具
+                  // 处理 success 字段：支持布尔值和字符串
+                  let success = false
+                  if (parsed.success === true || parsed.success === 'true') {
+                    success = true
+                  } else if (parsed.success === false || parsed.success === 'false') {
+                    success = false
+                  }
                   const toolExecutedMsg: ToolExecutedMessage = {
                     type: 'tool_executed',
                     toolName: parsed.toolName,
-                    toolOutput: parsed.toolOutput || '',
+                    toolOutput: parsed.toolOutput || parsed.toolResult || '',  // 支持 toolOutput 和 toolResult
                     toolArguments: parsed.v,
                     toolId: parsed.toolId,
+                    success,  // 解析成功状态
                   }
                   // 添加工具执行结果消息
                   const msgId = generateMessageId()
@@ -939,12 +957,20 @@ const sendChatRequest = async (userMessage: string) => {
             case 'TOOL_EXECUTED':
               if (parsed.toolName) {
                 hasToolExecuted = true  // 标记已执行工具
+                // 处理 success 字段：支持布尔值和字符串
+                let success = false
+                if (parsed.success === true || parsed.success === 'true') {
+                  success = true
+                } else if (parsed.success === false || parsed.success === 'false') {
+                  success = false
+                }
                 const toolExecutedMsg: ToolExecutedMessage = {
                   type: 'tool_executed',
                   toolName: parsed.toolName,
-                  toolOutput: parsed.toolOutput || '',
+                  toolOutput: parsed.toolOutput || parsed.toolResult || '',  // 支持 toolOutput 和 toolResult
                   toolArguments: parsed.v,
                   toolId: parsed.toolId,
+                  success,  // 解析成功状态
                 }
                 const msgId = generateMessageId()
                 messages.value.push({
@@ -1137,18 +1163,21 @@ const loadHistory = async (loadMore = false) => {
             newMessages.push(aiMessage)
           } else if (messageType === 'TOOL_EXECUTED') {
             // 工具执行结果消息
-            // message 字段包含 JSON: { toolName, toolOutput, arguments, toolId }
+            // message 字段包含 JSON: { toolName, toolOutput/toolResult, arguments, toolId, success }
             let toolName = '未知工具'
             let toolOutput = ''
             let toolArguments: string | undefined
             let toolId: string | undefined
+            let success: boolean | undefined
 
             try {
               const parsed = JSON.parse(item.message || '{}')
               if (parsed.toolName) toolName = parsed.toolName
               if (parsed.toolOutput) toolOutput = parsed.toolOutput
+              if (parsed.toolResult) toolOutput = parsed.toolResult  // 支持 toolResult 字段
               if (parsed.arguments) toolArguments = parsed.arguments
               if (parsed.toolId) toolId = parsed.toolId
+              if (parsed.success !== undefined) success = parsed.success === true
             } catch {
               // 解析失败，使用默认值
             }
@@ -1168,6 +1197,7 @@ const loadHistory = async (loadMore = false) => {
                 toolOutput,
                 toolArguments,
                 toolId,
+                success,  // 添加成功状态
               },
             })
           }
@@ -1548,14 +1578,17 @@ const handleCodeGenTypeChange = (type: string) => {
           </div>
 
           <!-- 工具执行结果消息 -->
-          <div v-else-if="msg.role === 'tool_executed'" class="tool-executed-message">
-            <div class="tool-executed-avatar">
-              <CheckOutlined />
+          <div v-else-if="msg.role === 'tool_executed'" :class="['tool-executed-message', { failed: msg.toolExecuted?.success === false }]">
+            <div :class="['tool-executed-avatar', { failed: msg.toolExecuted?.success === false }]">
+              <CheckOutlined v-if="msg.toolExecuted?.success !== false" />
+              <CloseOutlined v-else />
             </div>
-            <div class="tool-executed-bubble">
+            <div :class="['tool-executed-bubble', { failed: msg.toolExecuted?.success === false }]">
               <div class="tool-executed-header">
-                <span class="tool-executed-name">✅ {{ msg.toolExecuted?.toolName }}</span>
-                <span class="tool-badge success">DONE</span>
+                <span v-if="msg.toolExecuted?.success !== false" class="tool-executed-name">✅ {{ msg.toolExecuted?.toolName }}</span>
+                <span v-else class="tool-executed-name failed">❌ {{ msg.toolExecuted?.toolName }}</span>
+                <span v-if="msg.toolExecuted?.success !== false" class="tool-badge success">DONE</span>
+                <span v-else class="tool-badge failed">FAILED</span>
               </div>
               <!-- 可折叠的参数 -->
               <div v-if="msg.toolExecuted?.toolArguments" class="tool-executed-arguments">
@@ -1582,7 +1615,9 @@ const handleCodeGenTypeChange = (type: string) => {
               </div>
               <div class="tool-executed-result">
                 <div class="tool-result-title">📤 执行结果</div>
-                <div class="tool-result-content">{{ msg.toolExecuted?.toolOutput || '✓ 执行成功' }}</div>
+                <div class="tool-result-content" :class="{ empty: !msg.toolExecuted?.toolOutput }">
+                  {{ msg.toolExecuted?.toolOutput || (msg.toolExecuted?.success === false ? '✗ 执行失败' : '✓ 执行成功') }}
+                </div>
               </div>
             </div>
           </div>
@@ -2613,6 +2648,7 @@ const handleCodeGenTypeChange = (type: string) => {
 
 /* ===== 工具执行结果消息 ===== */
 .tool-executed-message {
+  position: relative;
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
@@ -2748,6 +2784,70 @@ const handleCodeGenTypeChange = (type: string) => {
 
 .tool-result-content::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 210, 106, 0.5);
+}
+
+/* ===== 工具执行失败状态样式 ===== */
+/* 失败状态的消息容器 */
+.tool-executed-message.failed .tool-executed-avatar.failed {
+  background: linear-gradient(135deg, rgba(255, 77, 79, 0.15), rgba(26, 26, 26, 1));
+  color: #ff4d4f;
+}
+
+/* 失败状态的气泡 */
+.tool-executed-message.failed .tool-executed-bubble.failed {
+  background: linear-gradient(135deg, rgba(255, 77, 79, 0.05) 0%, rgba(26, 26, 26, 1) 100%);
+  border-color: rgba(255, 77, 79, 0.3);
+}
+
+/* 失败状态的头部 */
+.tool-executed-message.failed .tool-executed-header {
+  border-bottom-color: rgba(255, 77, 79, 0.2);
+  background: rgba(255, 77, 79, 0.1);
+}
+
+/* 失败状态的名称 */
+.tool-executed-message.failed .tool-executed-name.failed {
+  color: #ff4d4f;
+}
+
+/* 失败状态的徽章 */
+.tool-executed-message.failed .tool-badge.failed {
+  background: rgba(255, 77, 79, 0.2);
+  color: #ff4d4f;
+  border-color: rgba(255, 77, 79, 0.4);
+}
+
+/* 失败状态的结果区域 */
+.tool-executed-message.failed .tool-result-title {
+  color: #ff4d4f;
+}
+
+.tool-executed-message.failed .tool-result-content {
+  border-color: rgba(255, 77, 79, 0.3);
+  background: rgba(255, 77, 79, 0.05);
+}
+
+/* 失败状态的结果区域滚动条 */
+.tool-executed-message.failed .tool-result-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 77, 79, 0.3);
+}
+
+.tool-executed-message.failed .tool-result-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 79, 0.5);
+}
+
+/* 失败状态的参数标签和展开按钮 */
+.tool-executed-message.failed .tool-arguments-label {
+  color: #ff4d4f;
+}
+
+.tool-executed-message.failed .tool-arguments-toggle {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.2);
+}
+
+.tool-executed-message.failed .tool-arguments-toggle:hover {
+  background: rgba(255, 77, 79, 0.3);
 }
 
 /* ===== 复制按钮 ===== */

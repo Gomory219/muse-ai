@@ -32,7 +32,7 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void testGenerateCodeAndSaveStreaming() {
-        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("请帮我生成一个博客网站，代码量不要超过200行，在你调用工具时，一次尽量调用多个工具", VUE, 70L,7L);
+        Flux<String> stringFlux = aiCodeGeneratorFacade.generateCodeAndSaveStreaming("现在是测试，你随便生成一些内容文件", VUE, 80L,7L);
         StringBuilder sb = new StringBuilder();
         stringFlux.doOnNext((s) -> {
             sb.append(s);

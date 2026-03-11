@@ -25,10 +25,11 @@ public class FileTools {
             if(!parentDir.exists()) {
                 FileUtil.mkdir(parentDir);
             }
-            FileUtil.writeUtf8String(content, file);
-            return "成功写入文件：" + relativePath;
+            throw new RuntimeException("aaa");
+//            FileUtil.writeUtf8String(content, file);
+//            return "成功写入文件：" + relativePath;
         } catch (Exception e) {
-            return "写入文件失败：" + e.getMessage();
+            throw new RuntimeException("写入文件失败：" + e.getMessage());
         }
     }
 }
