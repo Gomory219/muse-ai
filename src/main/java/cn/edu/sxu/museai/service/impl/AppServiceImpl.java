@@ -3,6 +3,7 @@ package cn.edu.sxu.museai.service.impl;
 import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.constant.AppConstant;
 import cn.edu.sxu.museai.core.AiCodeGeneratorFacade;
+import cn.edu.sxu.museai.core.builder.VueProjectBuilder;
 import cn.edu.sxu.museai.exception.BusinessException;
 import cn.edu.sxu.museai.model.dto.app.AppAddRequest;
 import cn.edu.sxu.museai.model.dto.app.AppNameUpdateRequest;
@@ -22,6 +23,7 @@ import cn.edu.sxu.museai.model.vo.AppVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.HistoryService;
+import cn.edu.sxu.museai.service.ScreenShotService;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.exceptions.UtilException;
 import cn.hutool.core.io.FileUtil;
@@ -29,14 +31,12 @@ import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.ZipUtil;
-import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -44,8 +44,6 @@ import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * 应用 服务层实现
@@ -60,11 +58,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
     @Resource
     private HistoryService historyService;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ScreenShotService screenShotService;
 
     /**
      * @param userMessage 用户prompt
-     * @param appId 应用id
-     * @param userId 用户id
+     * @param appId       应用id
+     * @param userId      用户id
      * @return 可以直接返回给前端的数据流
      */
     @Override
@@ -112,6 +114,19 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + appId;
         File sourceDir = new File(sourcePath);
         ThrowUtils.throwIf(!sourceDir.exists(), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在");
+
+        if (app.getCodeGenType() == CodeGenTypeEnum.VUE) {
+            boolean buildSuccess = vueProjectBuilder.buildProject(sourcePath);
+            if (!buildSuccess) {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "构建项目失败");
+            }
+            sourcePath = sourcePath + "/dist";
+            sourceDir = new File(sourcePath);
+            if (!FileUtil.exist(sourcePath)) {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "构建项目失败");
+            }
+        }
+
         String targetPath = AppConstant.APP_BATH_PATH + "/" + deployKey;
         File targetDir = new File(targetPath);
         try {
@@ -124,20 +139,22 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         app.setDeployedTime(LocalDateTime.now());
         boolean b = updateById(app);
         ThrowUtils.throwIf(!b, ErrorCode.OPERATION_ERROR, "部署失败");
-        return AppConstant.CODE_DEPLOY_HOST + "/" + deployKey;
+        String webUrl = AppConstant.CODE_DEPLOY_HOST + "/" + deployKey;
+        genAppScreenShotAsync(webUrl, app.getId());
+        return webUrl;
     }
 
     @Override
-    public String downloadApp(Long id, Long userId) {
-        App app = getById(id);
+    public String downloadApp(Long appId, Long userId) {
+        App app = getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         ThrowUtils.throwIf(!app.getUserId().equals(userId), ErrorCode.NO_AUTH_ERROR, "无权下载此应用");
 
-        String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + id;
+        String sourcePath = AppConstant.CODE_BATH_PATH + "/" + app.getCodeGenType().getValue() + "/" + appId;
         ThrowUtils.throwIf(!FileUtil.exist(sourcePath), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在");
 
         String basePath = AppConstant.CODE_DOWNLOAD_PATH;
-        String uri = "/" + id + ".zip";
+        String uri = "/" + appId + ".zip";
         String targetPath = basePath + uri;
         try {
             ZipUtil.zip(sourcePath, targetPath);
@@ -145,6 +162,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "下载失败" + e.getMessage());
         }
         return uri;
+    }
+
+    @Override
+    public void genAppScreenShotAsync(String webUrl, Long appId) {
+        Thread.startVirtualThread(() -> {
+            String minioUrl = screenShotService.takeScreenShot(webUrl);
+            App updateApp = App.builder().id(appId).cover(minioUrl).build();
+            updateById(updateApp);
+        });
     }
 
     @Override
@@ -162,7 +188,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = App.builder()
                 .initPrompt(initPrompt)
                 .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
-                .codeGenType(CodeGenTypeEnum.MULTI_FILE)
+                .codeGenType(CodeGenTypeEnum.VUE)
                 .userId(userId)
                 .priority(AppConstant.DEFAULT_PRIORITY)
                 .build();

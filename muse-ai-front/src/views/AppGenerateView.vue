@@ -292,7 +292,7 @@ const isAppOwner = computed(() => {
 
 // 判断是否应该显示预览
 const shouldShowPreview = computed(() => {
-  return messages.value.length > 0 && !isGenerating.value
+  return messages.value.length > 0 && !isGenerating.value && previewStatus.value === 'ready'
 })
 
 // 判断是否显示"尚未生成完毕"提示
@@ -304,7 +304,7 @@ const showNotReadyMessage = computed(() => {
 const iframeUrl = computed(() => {
   if (!appId.value) return ''
   if (codeGenType.value === 'multi-file') {
-    return `${API_BASE_URL}/code/multi-file/${appId.value}/index.html`
+    return `${API_BASE_URL}/code/vue/${appId.value}/dist/index.html`
   } else {
     return `${API_BASE_URL}/code/html/${appId.value}/index.html`
   }
@@ -331,6 +331,41 @@ const showPreview = () => {
 const iframeKey = ref(0)
 const refreshIframe = () => {
   iframeKey.value++
+  checkPreviewAvailability()
+}
+
+// 预览状态：'idle' - 未检查, 'checking' - 检查中, 'ready' - 可用, 'not_ready' - 不可用
+const previewStatus = ref<'idle' | 'checking' | 'ready' | 'not_ready'>('idle')
+
+// 检查预览是否可用
+const checkPreviewAvailability = async () => {
+  if (!iframeUrl.value) {
+    previewStatus.value = 'not_ready'
+    return
+  }
+
+  previewStatus.value = 'checking'
+  try {
+    // 发起请求检查预览是否可用
+    const response = await fetch(iframeUrl.value, {
+      method: 'GET',
+      cache: 'no-store',
+    })
+
+    // 检查状态码，只有200-299才认为可用
+    if (response.ok) {
+      previewStatus.value = 'ready'
+      pageLoadError.value = false
+    } else {
+      // 404、500等错误状态
+      previewStatus.value = 'not_ready'
+      console.log('预览不可用，状态码:', response.status)
+    }
+  } catch (error) {
+    // 网络错误等
+    previewStatus.value = 'not_ready'
+    console.log('预览不可用:', error)
+  }
 }
 
 // 应用分组（按时间）
@@ -530,6 +565,7 @@ const sendChatRequest = async (userMessage: string) => {
 
   isGenerating.value = true
   pageLoadError.value = false // 重置页面加载错误状态
+  previewStatus.value = 'idle' // 重置预览状态
   userScrolledUp = false // 重置滚动状态
   // 等待DOM更新后滚动到底部
   await nextTick()
@@ -1244,6 +1280,8 @@ const initAppData = async (newAppId?: string) => {
     hasMoreHistory.value = true
     oldestHistoryId.value = 0
     historyTotalCount.value = 0
+    previewStatus.value = 'idle'  // 重置预览状态
+    pageLoadError.value = false
   }
 
   // 加载应用列表
@@ -1286,6 +1324,9 @@ const initAppData = async (newAppId?: string) => {
       content: appInitPrompt.value,
     })
     await sendChatRequest(appInitPrompt.value)
+  } else if (hasHistory) {
+    // 有历史记录，检查预览是否可用
+    await checkPreviewAvailability()
   }
 }
 
@@ -1680,6 +1721,24 @@ const handleCodeGenTypeChange = (type: string) => {
             <span>重试</span>
           </button>
         </div>
+        <!-- 预览检查中 -->
+        <div v-else-if="previewStatus === 'checking'" class="preview-placeholder">
+          <div class="placeholder-icon">
+            <LoadingOutlined class="spinning" />
+          </div>
+          <p>正在检查应用状态...</p>
+        </div>
+        <!-- 应用尚未构建完毕 -->
+        <div v-else-if="previewStatus === 'not_ready'" class="preview-placeholder">
+          <div class="placeholder-icon static-icon">
+            📄
+          </div>
+          <p>应用尚未构建完毕，请稍后重试</p>
+          <button class="retry-btn" @click="checkPreviewAvailability">
+            <SyncOutlined />
+            <span>重新检查</span>
+          </button>
+        </div>
         <!-- iframe 预览 -->
         <iframe
           v-else-if="shouldShowPreview && iframeUrl"
@@ -1706,29 +1765,38 @@ const handleCodeGenTypeChange = (type: string) => {
     <!-- 部署成功弹窗 -->
     <Modal
       v-model:open="showDeployModal"
-      title="部署成功"
       :footer="null"
-      width="400"
+      width="420"
       centered
+      :wrap-style="{ background: 'transparent' }"
     >
       <div class="deploy-modal-content">
-        <div class="deploy-success-icon">
-          <CheckOutlined />
+        <div class="deploy-success-icon-wrapper">
+          <div class="deploy-success-icon">
+            <CheckOutlined />
+          </div>
         </div>
-        <p class="deploy-success-text">部署成功！</p>
+        <h3 class="deploy-success-title">部署成功！</h3>
+        <p class="deploy-success-desc">您的应用已成功部署，可通过以下链接访问</p>
+
         <div class="deploy-url-box">
-          <span class="deploy-url">{{ deployedUrl }}</span>
-          <button class="copy-url-btn" @click="copyDeployUrl">
-            <CopyOutlined />
-          </button>
+          <div class="deploy-url-label">🔗 应用链接</div>
+          <div class="deploy-url-input">
+            <span class="deploy-url-text">{{ deployedUrl }}</span>
+            <button class="copy-url-btn" @click="copyDeployUrl">
+              <CopyOutlined />
+              <span>复制</span>
+            </button>
+          </div>
         </div>
+
         <div class="deploy-modal-actions">
           <button class="deploy-action-btn secondary" @click="showDeployModal = false">
-            关闭
+            稍后访问
           </button>
           <button class="deploy-action-btn primary" @click="openDeployUrl">
             <GlobalOutlined />
-            访问应用
+            立即访问
           </button>
         </div>
       </div>
@@ -3279,6 +3347,32 @@ const handleCodeGenTypeChange = (type: string) => {
 }
 
 /* ===== 部署成功弹窗 ===== */
+/* 覆盖 ant-design modal 样式 */
+:deep(.ant-modal-content) {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color);
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+:deep(.ant-modal-header) {
+  background: transparent !important;
+  border-bottom: none !important;
+  padding: 24px 24px 0 !important;
+}
+
+:deep(.ant-modal-body) {
+  padding: 0 24px 24px !important;
+}
+
+:deep(.ant-modal-close) {
+  color: var(--text-muted);
+}
+
+:deep(.ant-modal-close:hover) {
+  color: var(--text-primary);
+}
+
 .deploy-modal-content {
   display: flex;
   flex-direction: column;
@@ -3286,69 +3380,145 @@ const handleCodeGenTypeChange = (type: string) => {
   padding: 8px 0;
 }
 
-.deploy-success-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--accent-green-dim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent-green);
-  font-size: 24px;
-  margin-bottom: 12px;
-}
-
-.deploy-success-text {
-  font-size: 15px;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
-}
-
-.deploy-url-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+/* 成功图标外层动画容器 */
+.deploy-success-icon-wrapper {
+  position: relative;
   margin-bottom: 16px;
 }
 
-.deploy-url {
-  flex: 1;
-  font-size: 12px;
+.deploy-success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-green) 0%, #00b878 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 32px;
+  box-shadow: 0 8px 24px rgba(0, 210, 106, 0.3);
+  animation: successPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes successPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 成功图标周围的波纹效果 */
+.deploy-success-icon-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  opacity: 0.15;
+  animation: ripple 1.5s ease-out infinite;
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.deploy-success-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.deploy-success-desc {
+  font-size: 13px;
   color: var(--text-secondary);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.deploy-url-box {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.deploy-url-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.deploy-url-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.deploy-url-input:hover {
+  border-color: var(--accent-green);
+}
+
+.deploy-url-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
   word-break: break-all;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
 .copy-url-btn {
-  width: 28px;
-  height: 28px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-muted);
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--accent-green);
+  border: none;
+  border-radius: 6px;
+  color: var(--bg-primary);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .copy-url-btn:hover {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
-  background: var(--accent-green-dim);
+  background: #00e078;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
+}
+
+.copy-url-btn:active {
+  transform: translateY(0);
 }
 
 .deploy-modal-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -3357,17 +3527,18 @@ const handleCodeGenTypeChange = (type: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 8px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .deploy-action-btn.secondary {
-  background: var(--bg-card);
+  background: var(--bg-primary);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
 }
@@ -3383,6 +3554,12 @@ const handleCodeGenTypeChange = (type: string) => {
 }
 
 .deploy-action-btn.primary:hover {
-  opacity: 0.9;
+  background: #00e078;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
+}
+
+.deploy-action-btn:active {
+  transform: translateY(0);
 }
 </style>

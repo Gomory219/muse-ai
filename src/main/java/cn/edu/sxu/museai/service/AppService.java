@@ -118,5 +118,7 @@ public interface AppService extends IService<App> {
 
     String downloadApp(Long id, Long userId);
 
+    void genAppScreenShotAsync(String webUrl, Long appId);
+
     Boolean pinApp(Long appId);
 }
