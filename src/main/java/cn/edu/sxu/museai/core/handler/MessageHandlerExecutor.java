@@ -2,6 +2,7 @@ package cn.edu.sxu.museai.core.handler;
 
 
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
+import cn.hutool.json.JSONUtil;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -20,9 +21,11 @@ public class MessageHandlerExecutor {
     private ToolMessageHandler toolMessageHandler;
 
     public Flux<String> execute(Flux<String> flux, Long appId, CodeGenTypeEnum codeGenTypeEnum, Long userId) {
-        return switch (codeGenTypeEnum) {
+         Flux<String> codeStream = switch (codeGenTypeEnum) {
             case VUE -> toolMessageHandler.handle(flux, appId, codeGenTypeEnum, userId);
             case MULTI_FILE,HTML -> simpleMessageHandler.handle(flux, appId, codeGenTypeEnum, userId);
         };
+         return codeStream.concatWithValues(
+                 JSONUtil.toJsonStr(StandardMessage.builder().jsonViewType(JsonViewType.FINISH).build()));
     }
 }

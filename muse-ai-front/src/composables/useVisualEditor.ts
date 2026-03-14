@@ -207,7 +207,6 @@ const EDITOR_INJECT_SCRIPT = `
         type: 'MUSE_ELEMENT_SELECT',
         element: getElementInfo(selectedElement)
       }, '*');
-      console.log('[Muse Editor] ✓ 元素已选中:', getElementInfo(selectedElement));
     } catch(e) {
       console.error('[Muse Editor] 发送选中消息失败:', e);
     }
@@ -215,7 +214,6 @@ const EDITOR_INJECT_SCRIPT = `
 
   // 启用编辑模式
   window.__muse_enable_editor__ = function() {
-    console.log('[Muse Editor] ✓ 启用编辑模式');
     window.__muse_editor_enabled__ = true;
     document.body.style.setProperty('cursor', 'crosshair', 'important');
 
@@ -232,7 +230,6 @@ const EDITOR_INJECT_SCRIPT = `
 
   // 禁用编辑模式
   window.__muse_disable_editor__ = function() {
-    console.log('[Muse Editor] ✓ 禁用编辑模式');
     window.__muse_editor_enabled__ = false;
     document.body.style.cursor = '';
 
@@ -263,7 +260,6 @@ const EDITOR_INJECT_SCRIPT = `
 
   // 清除选中状态
   window.__muse_clear_selection__ = function() {
-    console.log('[Muse Editor] ✓ 清除选中');
     if (selectedElement) {
       restoreOriginalStyle(selectedElement);
       selectedElement = null;
@@ -311,11 +307,8 @@ const EDITOR_INJECT_SCRIPT = `
 
   // 发送 READY 消息的函数
   function sendReady() {
-    console.log('[Muse Editor] 尝试发送 MUSE_EDITOR_READY 消息到父窗口');
-    console.log('[Muse Editor] 父窗口 URL:', window.location.href);
     try {
       window.parent.postMessage({ type: 'MUSE_EDITOR_READY' }, '*');
-      console.log('[Muse Editor] ✓ MUSE_EDITOR_READY 消息已发送');
     } catch(e) {
       console.error('[Muse Editor] ✗ 发送 MUSE_EDITOR_READY 失败:', e);
     }
@@ -330,8 +323,6 @@ const EDITOR_INJECT_SCRIPT = `
   setTimeout(sendReady, 50);
   setTimeout(sendReady, 200);
   setTimeout(sendReady, 500);
-
-  console.log('[Muse Editor] ===== 脚本初始化完成 =====');
 })();
 `
 
@@ -434,7 +425,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
     } else {
       enableEditMode()
     }
-    console.log('[useVisualEditor] 切换后 isEditMode:', isEditMode.value)
   }
 
   // 清除选中元素
@@ -485,7 +475,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
       case 'MUSE_EDITOR_READY':
       case 'MUSE_ENABLE_EDITOR_CHECK':
         isIframeReady.value = true
-        console.log('[useVisualEditor] ✓ iframe 编辑器已就绪')
         // 清除超时定时器
         if (injectTimeoutTimer) {
           clearTimeout(injectTimeoutTimer)
@@ -499,7 +488,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
 
       case 'MUSE_ELEMENT_SELECT':
         selectedElement.value = data.element
-        console.log('[useVisualEditor] ✓ 选中元素:', data.element)
         break
 
       case 'MUSE_ELEMENT_DESELECT':
@@ -508,7 +496,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
 
       case 'MUSE_EDITOR_MODE':
         isEditMode.value = data.enabled
-        console.log('[useVisualEditor] 编辑模式状态:', data.enabled)
         break
     }
   }
@@ -516,11 +503,9 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
   // 处理 iframe 加载完成
   const handleIframeLoad = () => {
     if (isLoading) {
-      console.log('[useVisualEditor] 正在注入中，跳过重复调用')
       return
     }
 
-    console.log('[useVisualEditor] iframe 加载完成，开始注入脚本')
     isLoading = true
     isIframeReady.value = false
 
@@ -585,9 +570,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
     try {
       const doc = iframe.contentDocument || iframe.contentWindow?.document
       if (!doc) {
-        console.warn('[useVisualEditor] 无法访问 iframe document (跨域限制)')
-        console.log('[useVisualEditor] 尝试通过 postMessage 触发 iframe 内部脚本')
-
         // 由于跨域无法直接注入，尝试发送启动消息
         // 假设 iframe 内部可能已经有编辑器脚本，或者需要手动加载
         iframe.contentWindow.postMessage({ type: 'MUSE_START_EDITOR' }, '*')
@@ -612,8 +594,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
       script.id = 'muse-visual-editor-inject'
       script.text = EDITOR_INJECT_SCRIPT
       doc.head.appendChild(script)
-
-      console.log('[useVisualEditor] ✓ script 元素已添加到 iframe')
 
       // 多次发送 PING 测试 iframe 通信
       const pingIntervals = [100, 300, 600, 1000, 2000]
@@ -657,7 +637,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
 
   // 组件挂载时添加消息监听
   onMounted(() => {
-    console.log('[useVisualEditor] 注册消息监听器')
     window.addEventListener('message', handleIframeMessage)
 
     // 如果 iframe 已经存在，添加 load 事件监听并尝试注入
@@ -671,7 +650,6 @@ export function useVisualEditor(iframeRef: Ref<HTMLIFrameElement | null>) {
 
   // 组件卸载时移除消息监听
   onUnmounted(() => {
-    console.log('[useVisualEditor] 移除消息监听器')
     window.removeEventListener('message', handleIframeMessage)
 
     // 移除 iframe 的 load 事件监听

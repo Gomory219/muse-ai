@@ -9,6 +9,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import jakarta.annotation.Resource;
@@ -59,6 +61,17 @@ public class AiServiceFactory {
 
 
     public AiService createAiService(Long appId, CodeGenTypeEnum codeType) {
+        String baseUrl = "https://open.bigmodel.cn/api/paas/v4/";
+        String apiKey = System.getenv("GLM_KEY");
+        String modelName = "GLM-4.7-FlashX";
+        StreamingChatModel glmStreamingChatModel = OpenAiStreamingChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         return switch (codeType) {
             case HTML, MULTI_FILE -> {
                 MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
@@ -72,7 +85,7 @@ public class AiServiceFactory {
                 yield AiServices.builder(AiService.class)
                         .chatMemory(chatMemory)
                         .chatModel(chatModel)
-                        .streamingChatModel(streamingChatModel)
+                        .streamingChatModel(glmStreamingChatModel)
                         .build();
             }
             case VUE -> {
@@ -101,17 +114,28 @@ public class AiServiceFactory {
     }
 
     @Bean
-    public AiService createAiService(ChatModel chatModel, StreamingChatModel streamingChatModel, ChatMemoryStore chatMemoryStore) {
+    public AiService createAiService(ChatModel chatModel, ChatMemoryStore chatMemoryStore) {
+        String baseUrl = "https://open.bigmodel.cn/api/paas/v4/";
+        String apiKey = System.getenv("GLM_KEY");
+        String modelName = "GLM-4.7-FlashX";
+        StreamingChatModel o = OpenAiStreamingChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .logResponses(true)
+                .logRequests(true)
+                .build();
+
         return AiServices.builder(AiService.class)
                 .chatModel(chatModel)
-                .streamingChatModel(streamingChatModel)
+                .streamingChatModel(o)
                 .chatMemoryProvider(memoryId ->
                     MessageWindowChatMemory.builder()
                             .chatMemoryStore(chatMemoryStore)
                             .id(memoryId)
                             .maxMessages(10)
                             .alwaysKeepSystemMessageFirst(true)
-                            .build()
-                ).build();
+                            .build())
+                .build();
     }
 }

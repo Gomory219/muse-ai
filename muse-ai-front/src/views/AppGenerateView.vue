@@ -61,7 +61,7 @@ const appName = ref<string>('未命名应用')
 const appInitPrompt = ref<string>('')
 const appOwnerId = ref<string>('')
 const prompt = ref<string>(route.query.prompt as string || '')
-const codeGenType = ref<string>('multi-file')
+const codeGenType = ref<string>('')
 
 // 聊天历史加载状态
 const isLoadingHistory = ref(false)
@@ -774,6 +774,9 @@ const sendChatRequest = async (userMessage: string) => {
               break
             case 'FINISH':
               isGenerating.value = false
+              setTimeout(() => {
+                refreshIframe()
+              }, 500)
               break
             case 'TOOL_REQUEST':
               if (parsed.toolName) {
@@ -887,7 +890,12 @@ const sendChatRequest = async (userMessage: string) => {
                 break
               case 'FINISH':
                 // 消息结束
+                console.log('[AppGenerateView] 收到 FINISH 消息，准备刷新 iframe')
                 isGenerating.value = false
+                setTimeout(() => {
+                  console.log('[AppGenerateView] 0.5s 后刷新 iframe')
+                  refreshIframe()
+                }, 500)
                 break
               case 'TOOL_REQUEST':
                 // AI申请调用工具 - 附加到当前 AI 消息
@@ -982,6 +990,9 @@ const sendChatRequest = async (userMessage: string) => {
               break
             case 'FINISH':
               isGenerating.value = false
+              setTimeout(() => {
+                refreshIframe()
+              }, 500)
               break
             case 'TOOL_REQUEST':
               if (parsed.toolName) {
@@ -1310,6 +1321,7 @@ const initAppData = async (newAppId?: string) => {
     appName.value = currentApp.appName || '未命名应用'
     appInitPrompt.value = currentApp.initPrompt || ''
     appOwnerId.value = currentApp.userId || ''
+    codeGenType.value = currentApp.codeGenType || ''
   } else {
     // 如果应用列表中没有，尝试单独获取
     try {
@@ -1319,6 +1331,7 @@ const initAppData = async (newAppId?: string) => {
         appName.value = appDetail.appName || '未命名应用'
         appInitPrompt.value = appDetail.initPrompt || ''
         appOwnerId.value = appDetail.userId || ''
+        codeGenType.value = appDetail.codeGenType || ''
       }
     } catch (error: any) {
       console.error('获取应用详情失败', error)

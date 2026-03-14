@@ -23,6 +23,11 @@ public class AiCodeResponseParser {
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile("```(\\w+)?\\s*\\n([\\s\\S]*?)```");
 
     /**
+     * 思考标签正则模式，匹配 <think>...</think> 及其内容
+     */
+    private static final Pattern THINK_TAG_PATTERN = Pattern.compile("<think>[\\s\\S]*?</think>", Pattern.CASE_INSENSITIVE);
+
+    /**
      * 解析结果
      */
     @Data
@@ -51,8 +56,11 @@ public class AiCodeResponseParser {
             return createEmptyResult();
         }
 
+        // 预处理：清除 </think>之间的思考内容
+        String cleanedResponse = THINK_TAG_PATTERN.matcher(aiResponse).replaceAll("");
+
         // 提取所有代码块
-        Matcher matcher = CODE_BLOCK_PATTERN.matcher(aiResponse);
+        Matcher matcher = CODE_BLOCK_PATTERN.matcher(cleanedResponse);
 
         String htmlCode = null;
         String cssCode = null;
@@ -64,7 +72,7 @@ public class AiCodeResponseParser {
         while (matcher.find()) {
             // 提取代码块前的文本作为描述的一部分
             if (matcher.start() > lastEnd) {
-                String textBefore = aiResponse.substring(lastEnd, matcher.start()).trim();
+                String textBefore = cleanedResponse.substring(lastEnd, matcher.start()).trim();
                 if (!textBefore.isEmpty()) {
                     descriptionBuilder.append(textBefore).append("\n");
                 }
@@ -98,8 +106,8 @@ public class AiCodeResponseParser {
         }
 
         // 提取最后一个代码块后的文本
-        if (lastEnd < aiResponse.length()) {
-            String textAfter = aiResponse.substring(lastEnd).trim();
+        if (lastEnd < cleanedResponse.length()) {
+            String textAfter = cleanedResponse.substring(lastEnd).trim();
             if (!textAfter.isEmpty()) {
                 descriptionBuilder.append(textAfter).append("\n");
             }
@@ -197,6 +205,8 @@ public class AiCodeResponseParser {
             return "";
         }
 
-        return CODE_BLOCK_PATTERN.matcher(text).replaceAll("").trim();
+        // 先清除思考标签内容，再移除代码块
+        String cleaned = THINK_TAG_PATTERN.matcher(text).replaceAll("");
+        return CODE_BLOCK_PATTERN.matcher(cleaned).replaceAll("").trim();
     }
 }

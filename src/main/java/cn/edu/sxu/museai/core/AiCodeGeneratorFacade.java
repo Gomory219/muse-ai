@@ -66,14 +66,10 @@ public class AiCodeGeneratorFacade {
          *  - 如果是Vue生成类型，则将 TokenStream流转化为Flux<String>流，并将 AI 的各种输出标准化为 StreamMessage 的Json
          */
         Flux<String> stringFlux = switch (codeGenTypeEnum) {
-            case HTML -> {
-                Flux<String> codeFlux = aiServiceWithMemory.generateSingleFileStreaming(userMessage);
-                yield  processFileSave(codeFlux, codeGenTypeEnum, appId);
-            }
-            case MULTI_FILE -> {
-                Flux<String> codeFlux = aiServiceWithMemory.generateMultiFileStreaming(userMessage);
-                yield  processFileSave(codeFlux, codeGenTypeEnum, appId);
-            }
+            case HTML -> aiServiceWithMemory.generateSingleFileStreaming(userMessage);
+
+            case MULTI_FILE -> aiServiceWithMemory.generateMultiFileStreaming(userMessage);
+
             case VUE ->{
                 TokenStream tokenStream = aiServiceWithMemory.generateVueProjectStreaming(userMessage, appId);
                 yield processTokenStream(tokenStream);

@@ -14,13 +14,16 @@ public class SmartRouteServiceFactory {
 
         String baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1";
         String apiKey = System.getenv("ALIYUN_AI_KEY");
-        String modelName = "qwen3.5-plus";
+        String modelName = "qwen3.5-flash";
 
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(baseUrl)
+//                .logRequests(true)
+//                .logResponses(true)
                 .apiKey(apiKey)
                 .modelName(modelName)
+//                .maxRetries(1)
                 .build();
 
         return AiServices.builder(SmartRouteService.class)

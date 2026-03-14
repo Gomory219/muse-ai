@@ -98,7 +98,31 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 //        }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
 //            log.info("用户取消生成代码");
 //        });
-        return aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, CodeGenTypeEnum.VUE, appId, userId);
+        return aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, app.getCodeGenType(), appId, userId)
+                .doOnNext(System.out::println);
+    }
+
+    @Override
+    public Long createApp(AppAddRequest appAddRequest, Long userId) {
+        ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR, "创建请求不能为空");
+        String initPrompt = appAddRequest.getInitPrompt();
+        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
+
+        CodeGenTypeEnum codeGenTypeEnum = smartRouteService.decide(initPrompt);;
+        log.info("决定使用{}生成代码", codeGenTypeEnum);
+
+        App app = App.builder()
+                .initPrompt(initPrompt)
+                .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
+//                .codeGenType(CodeGenTypeEnum.VUE)
+                .codeGenType(codeGenTypeEnum)
+                .userId(userId)
+                .priority(AppConstant.DEFAULT_PRIORITY)
+                .build();
+
+        boolean saved = save(app);
+        ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建应用失败");
+        return app.getId();
     }
 
     @Override
@@ -181,28 +205,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return updateById(app);
     }
 
-    @Override
-    public Long createApp(AppAddRequest appAddRequest, Long userId) {
-        ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR, "创建请求不能为空");
-        String initPrompt = appAddRequest.getInitPrompt();
-        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
-
-        CodeGenTypeEnum codeGenTypeEnum = smartRouteService.decide(initPrompt);;
-        log.info("决定使用{}生成代码", codeGenTypeEnum);
-
-        App app = App.builder()
-                .initPrompt(initPrompt)
-                .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
-                .codeGenType(CodeGenTypeEnum.VUE)
-//                .codeGenType(codeGenTypeEnum)
-                .userId(userId)
-                .priority(AppConstant.DEFAULT_PRIORITY)
-                .build();
-
-        boolean saved = save(app);
-        ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建应用失败");
-        return app.getId();
-    }
 
     @Override
     public Boolean updateAppName(AppNameUpdateRequest appNameUpdateRequest, Long userId) {
