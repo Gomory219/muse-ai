@@ -1,6 +1,6 @@
 package cn.edu.sxu.museai.ai;
 
-import cn.edu.sxu.museai.ai.tools.ToolsFactory;
+import cn.edu.sxu.museai.ai.tools.ToolsManager;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.service.HistoryService;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
@@ -27,6 +26,8 @@ public class AiServiceFactory {
     private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
     private final ChatMemoryStore chatMemoryStore;
+    @Resource
+    private ToolsManager toolsManager;
 
     @Resource
     private HistoryService historyService;
@@ -98,7 +99,7 @@ public class AiServiceFactory {
                 int n = historyService.loadMessageToMemory(chatMemoryStore, appId);
                 log.info("Loaded {} messages to memory for app {}", n, appId);
                 yield AiServices.builder(AiService.class)
-                        .tools(ToolsFactory.tools())
+                        .tools((Object[]) toolsManager.allTools())
                         .hallucinatedToolNameStrategy((request)-> {
                             log.info("大模型调用工具出现幻觉");
                             return ToolExecutionResultMessage.from(request, "该工具不存在");

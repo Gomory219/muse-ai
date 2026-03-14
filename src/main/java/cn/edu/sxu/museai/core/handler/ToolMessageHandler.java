@@ -1,6 +1,8 @@
 package cn.edu.sxu.museai.core.handler;
 
 import cn.edu.sxu.museai.ai.model.message.*;
+import cn.edu.sxu.museai.ai.tools.BaseTool;
+import cn.edu.sxu.museai.ai.tools.ToolsManager;
 import cn.edu.sxu.museai.constant.AppConstant;
 import cn.edu.sxu.museai.core.builder.VueProjectBuilder;
 import cn.edu.sxu.museai.model.entity.History;
@@ -8,12 +10,14 @@ import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.model.enums.MessageTypeEnum;
 import cn.edu.sxu.museai.service.HistoryService;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -33,6 +37,8 @@ public class ToolMessageHandler extends BaseMessageHandler {
     private HistoryService historyService;
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ToolsManager toolsManager;
 
     /**
      * AI 生成的内容如：
@@ -117,10 +123,13 @@ public class ToolMessageHandler extends BaseMessageHandler {
                 if (seenToolIds.contains(toolRequestMessage.getToolId())) {
                     return "";
                 }
+                String toolName = toolRequestMessage.getToolName();
+                BaseTool tool = toolsManager.getTool(toolName);
+                toolName =  tool.getToolDescription();
                 seenToolIds.add(toolRequestMessage.getToolId());
                 StandardMessage standardMessage = StandardMessage.builder()
                         .jsonViewType(JsonViewType.TOOL_REQUEST)
-                        .toolName(toolRequestMessage.getToolName())
+                        .toolName(toolName)
                         .build();
                 return JSONUtil.toJsonStr(standardMessage);
             }
@@ -137,12 +146,20 @@ public class ToolMessageHandler extends BaseMessageHandler {
                 }
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(message, ToolExecutedMessage.class);
                 toolExecutedMessageList.add(toolExecutedMessage);
+                String toolExecutedInfo = toolExecutedMessage.getToolOutput();
+                String toolName = toolExecutedMessage.getToolName();
+                String arguments = toolExecutedMessage.getArguments();
+                if (toolExecutedMessage.getSuccess()) {
+                    BaseTool tool = toolsManager.getTool(toolName);
+                    JSONObject entries = JSONUtil.parseObj(arguments);
+                    toolExecutedInfo = tool.getResultDescription(entries);
+                }
                 StandardMessage standardMessage = StandardMessage.builder()
                         .jsonViewType(JsonViewType.TOOL_EXECUTED)
-                        .toolName(toolExecutedMessage.getToolName())
-                        .toolResult(toolExecutedMessage.getToolOutput())
+                        .toolName(toolName)
+                        .toolResult(toolExecutedInfo)
                         .success(toolExecutedMessage.getSuccess())
-                        .v(toolExecutedMessage.getArguments())
+                        .v(arguments)
                         .build();
                 return JSONUtil.toJsonStr(standardMessage);
             }
