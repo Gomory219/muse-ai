@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.service.impl;
 
+import cn.edu.sxu.museai.ai.SmartRouteService;
 import cn.edu.sxu.museai.common.PageResult;
 import cn.edu.sxu.museai.constant.AppConstant;
 import cn.edu.sxu.museai.core.AiCodeGeneratorFacade;
@@ -62,7 +63,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
     @Resource
     private ScreenShotService screenShotService;
-
+    @Resource
+    private SmartRouteService smartRouteService;
     /**
      * @param userMessage 用户prompt
      * @param appId       应用id
@@ -185,10 +187,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
 
+        CodeGenTypeEnum codeGenTypeEnum = smartRouteService.decide(initPrompt);;
+        log.info("决定使用{}生成代码", codeGenTypeEnum);
+
         App app = App.builder()
                 .initPrompt(initPrompt)
                 .appName(initPrompt.substring(0, Integer.min(12, initPrompt.length())))
                 .codeGenType(CodeGenTypeEnum.VUE)
+//                .codeGenType(codeGenTypeEnum)
                 .userId(userId)
                 .priority(AppConstant.DEFAULT_PRIORITY)
                 .build();

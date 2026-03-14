@@ -30,10 +30,9 @@ langchain4j:
       log-requests: true
       log-responses: true
       max-tokens: 8192
-      strict-json-schema: true
-      response-format: json_object
       max-retries: 0
       timeout: 180s
+
     streaming-chat-model:
       base-url: https://api.minimaxi.com/v1
       api-key: ${MUSE_MINIMAX_API_KEY}
@@ -41,7 +40,6 @@ langchain4j:
 #      log-requests: true
 #      log-responses: true
       max-tokens: 8192
-      strict-json-schema: true
       max-retries: 0
       timeout: 180s
 
