@@ -15,7 +15,6 @@ const myAxios = axios.create({
 // 全局请求拦截器
 myAxios.interceptors.request.use(
   function (config) {
-    console.log('[request.ts] 发送请求:', config.method?.toUpperCase(), config.url)
     return config
   },
   function (error) {
@@ -27,7 +26,6 @@ myAxios.interceptors.request.use(
 // 全局响应拦截器
 myAxios.interceptors.response.use(
   function (response) {
-    console.log('[request.ts] 成功响应拦截器, data:', response.data)
     const { data } = response
     // 转换 ID 字段为字符串，防止大整数精度丢失
     if (data && typeof data === 'object') {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message, Modal } from 'ant-design-vue'
+import { message, Modal, Alert } from 'ant-design-vue'
 import {
   SendOutlined,
   LoadingOutlined,
@@ -17,6 +17,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   CaretDownOutlined,
+  EditOutlined,
+  HighlightOutlined,
 } from '@ant-design/icons-vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -26,6 +28,7 @@ import { useUserStore } from '@/stores/user'
 import { listMyApps, deployApp, updateAppName, downloadApp, getAppDetail } from '@/api/appController'
 import { getHistory } from '@/api/historyController'
 import type { AppVO, ToolExecutionRequest } from '@/api/typings.d'
+import { useVisualEditor } from '@/composables/useVisualEditor'
 
 // 初始化 markdown-it
 const md = new MarkdownIt({
@@ -329,6 +332,7 @@ const showPreview = () => {
 
 // iframe 刷新触发
 const iframeKey = ref(0)
+const iframeRef = ref<HTMLIFrameElement | null>(null)
 const refreshIframe = () => {
   iframeKey.value++
   checkPreviewAvailability()
@@ -547,13 +551,26 @@ const handleSend = async () => {
   const text = currentInput.value.trim()
   if (!text || isGenerating.value) return
 
+  // 如果有选中的元素，增强提示词
+  let enhancedMessage = text
+  if (visualEditor.selectedElement.value) {
+    enhancedMessage = visualEditor.getEnhancedPrompt(text)
+  }
+
   messages.value.push({
     role: 'user',
-    content: text,
+    content: text, // 显示原始用户输入
   })
   currentInput.value = ''
 
-  await sendChatRequest(text)
+  // 发送增强后的消息
+  await sendChatRequest(enhancedMessage)
+
+  // 发送后清除选中状态并退出编辑模式
+  if (visualEditor.isEditMode.value) {
+    visualEditor.clearSelection()
+    visualEditor.disableEditMode()
+  }
 }
 
 // 发送聊天请求
@@ -1337,6 +1354,9 @@ watch(() => route.query.appId, (newAppId) => {
   }
 })
 
+// 可视化编辑器
+const visualEditor = useVisualEditor(iframeRef)
+
 onMounted(async () => {
   await initAppData()
 })
@@ -1666,15 +1686,42 @@ const handleCodeGenTypeChange = (type: string) => {
       </div>
 
       <div class="input-area">
+        <!-- 选中元素提示 -->
+        <div v-if="visualEditor.selectedElement.value" class="selected-element-alert">
+          <a-alert
+            type="info"
+            closable
+            @close="visualEditor.clearSelection()"
+          >
+            <template #message>
+              <div class="selected-element-content">
+                <HighlightOutlined class="element-icon" />
+                <span class="element-label">已选中元素:</span>
+                <span class="element-desc">{{ visualEditor.elementDescription }}</span>
+              </div>
+            </template>
+          </a-alert>
+        </div>
+
         <div class="input-wrapper">
           <textarea
             v-model="currentInput"
             class="chat-input"
-            placeholder="继续描述你的需求，让 AI 完善代码..."
+            :placeholder="visualEditor.isEditMode.value ? '点击右侧网页中的元素进行选择，然后输入修改需求...' : '继续描述你的需求，让 AI 完善代码...'"
             rows="2"
             :disabled="isGenerating"
             @keydown.enter.prevent="!isGenerating && currentInput.trim() && handleSend()"
           ></textarea>
+          <!-- 编辑模式按钮 -->
+          <button
+            v-if="shouldShowPreview && !isGenerating"
+            class="edit-mode-btn"
+            :class="{ active: visualEditor.isEditMode.value }"
+            @click="visualEditor.toggleEditMode"
+            title="可视化编辑：点击右侧网页元素进行选择"
+          >
+            <EditOutlined />
+          </button>
           <button
             class="send-btn"
             :class="{ active: currentInput.trim() && !isGenerating }"
@@ -1742,9 +1789,11 @@ const handleCodeGenTypeChange = (type: string) => {
         <!-- iframe 预览 -->
         <iframe
           v-else-if="shouldShowPreview && iframeUrl"
+          ref="iframeRef"
           :key="iframeKey"
           :src="iframeUrl"
           class="preview-iframe"
+          :class="{ 'edit-mode': visualEditor.isEditMode.value }"
           frameborder="0"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           @error="handleIframeError"
@@ -3069,10 +3118,6 @@ const handleCodeGenTypeChange = (type: string) => {
   border: 1px solid var(--border-color);
 }
 
-.input-wrapper:focus-within {
-  border-color: var(--accent-green);
-}
-
 .chat-input {
   flex: 1;
   background: transparent;
@@ -3562,4 +3607,89 @@ const handleCodeGenTypeChange = (type: string) => {
 .deploy-action-btn:active {
   transform: translateY(0);
 }
+
+/* ===== 可视化编辑相关样式 ===== */
+.selected-element-alert {
+  padding: 0 16px 8px;
+}
+
+.selected-element-alert :deep(.ant-alert) {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+}
+
+.selected-element-alert :deep(.ant-alert-info) {
+  background: #1a1a1a;
+  border-color: #3a3a3a;
+}
+
+.selected-element-alert :deep(.anticon-close) {
+  color: #888;
+}
+
+.selected-element-alert :deep(.anticon-close:hover) {
+  color: #fff;
+}
+
+.selected-element-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.element-icon {
+  color: #00d26a;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.element-label {
+  font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.element-desc {
+  color: #888;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  margin-right: 8px;
+}
+
+.edit-mode-btn:hover {
+  border-color: #666;
+  color: #fff;
+  background: #2a2a2a;
+}
+
+.edit-mode-btn.active {
+  border-color: #00d26a;
+  background: #00d26a;
+  color: #1a1a1a;
+}
+
 </style>
