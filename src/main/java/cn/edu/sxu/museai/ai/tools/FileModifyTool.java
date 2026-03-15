@@ -7,6 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.service.MemoryId;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +21,7 @@ public class FileModifyTool extends BaseTool {
     public String modifyFile(@P("希望修改文件的相对路径") String filePath,
                              @P("希望替换的原始内容") String srcContent,
                              @P("希望替换后的内容") String destContent,
-                             @MemoryId Long appId) {
+                             @ToolMemoryId Long appId) {
         String projectRootPath = projectRootPath(appId);
         String absoluteFilePath = projectRootPath + "/" + filePath;
 

@@ -1,6 +1,6 @@
 package cn.edu.sxu.museai.service.impl;
 
-import cn.edu.sxu.museai.common.MinioUtil;
+import cn.edu.sxu.museai.utils.MinioUtil;
 import cn.edu.sxu.museai.service.ScreenShotService;
 import cn.edu.sxu.museai.utils.WebScreenshotUtil;
 import cn.hutool.core.io.FileUtil;

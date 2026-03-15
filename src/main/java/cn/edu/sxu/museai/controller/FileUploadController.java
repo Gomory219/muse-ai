@@ -1,19 +1,14 @@
 package cn.edu.sxu.museai.controller;
 
 import cn.edu.sxu.museai.common.BaseResponse;
-import cn.edu.sxu.museai.common.MinioUtil;
+import cn.edu.sxu.museai.utils.MinioUtil;
 import cn.edu.sxu.museai.common.ResultUtils;
 import cn.edu.sxu.museai.exception.ErrorCode;
 import cn.edu.sxu.museai.exception.ThrowUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 public class FileUploadController {

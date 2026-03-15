@@ -84,9 +84,11 @@ export function getCodeTypeLabel(type?: string): string {
   const t = type.toUpperCase()
   if (t === 'HTML') return '单文件'
   if (t === 'MULTI_FILE') return '多文件'
+  if (t === 'VUE') return 'VUE工程'
   // 兼容旧值
   if (t.includes('SINGLE') || t.includes('ONE')) return '单文件'
   if (t.includes('MULTI')) return '多文件'
+  if (t.includes('VUE')) return 'VUE工程'
   return '-'
 }
 
@@ -98,8 +100,40 @@ export function getCodeTypeClass(type?: string): string {
   const t = type.toUpperCase()
   if (t === 'HTML') return 'type-single'
   if (t === 'MULTI_FILE') return 'type-multi'
+  if (t === 'VUE') return 'type-vue'
   // 兼容旧值
   if (t.includes('SINGLE') || t.includes('ONE')) return 'type-single'
   if (t.includes('MULTI')) return 'type-multi'
+  if (t.includes('VUE')) return 'type-vue'
   return ''
+}
+
+/**
+ * 根据代码类型获取预览 URL 路径
+ * @param type 代码类型 (HTML | MULTI_FILE | VUE)
+ * @param appId 应用 ID
+ * @param apiBaseUrl API 基础 URL
+ * @returns 完整的预览 URL
+ */
+export function getCodeTypeUrl(type?: string, appId?: string, apiBaseUrl: string = ''): string {
+  if (!type || !appId) return ''
+  const t = type.toUpperCase()
+  if (t === 'HTML') {
+    return `${apiBaseUrl}/code/html/${appId}/index.html`
+  }
+  if (t === 'MULTI_FILE') {
+    return `${apiBaseUrl}/multi-file/${appId}/index.html`
+  }
+  if (t === 'VUE') {
+    return `${apiBaseUrl}/code/vue/${appId}/dist/index.html`
+  }
+  // 兼容旧值
+  if (t.includes('VUE')) {
+    return `${apiBaseUrl}/code/vue/${appId}/dist/index.html`
+  }
+  if (t.includes('MULTI')) {
+    return `${apiBaseUrl}/multi-file/${appId}/index.html`
+  }
+  // 默认返回单文件路径
+  return `${apiBaseUrl}/code/html/${appId}/index.html`
 }

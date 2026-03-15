@@ -27,11 +27,13 @@ langchain4j:
       base-url: https://api.minimaxi.com/v1
       api-key: ${MUSE_MINIMAX_API_KEY}
       model-name: MiniMax-M2.5
-#      log-requests: true
-#      log-responses: true
+      log-requests: true
+      log-responses: true
+#      strict-json-schema: true
       max-tokens: 8192
       max-retries: 0
       timeout: 180s
+#      supported-capabilities: response_format_json_schema
 
     streaming-chat-model:
       base-url: https://api.minimaxi.com/v1
@@ -73,3 +75,7 @@ minio:
   secret-key: ${MINIO_SECRET_KEY}
   bucket-name: muse-ai
 
+# 阿里云 DashScope 配置
+dashscope:
+  api-key: ${ALIYUN_AI_KEY}
+  image-model: wan2.2-t2i-flash

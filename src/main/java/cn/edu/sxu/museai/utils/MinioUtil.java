@@ -1,9 +1,12 @@
-package cn.edu.sxu.museai.common;
+package cn.edu.sxu.museai.utils;
 
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,6 +18,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class MinioUtil {
@@ -70,6 +74,70 @@ public class MinioUtil {
             throw new RuntimeException(e);
         }
         return buildAccessUrl(objectName);
+    }
+
+    /**
+     * 从网络URL下载图片并上传到MinIO
+     *
+     * @param imageUrl 图片URL
+     * @return 文件在MinIO中的存储路径（可用于下载/访问）
+     */
+    public String uploadImageFromUrl(String imageUrl) {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(imageUrl)
+                .get()
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("下载图片失败: HTTP " + response.code());
+            }
+
+            InputStream inputStream = response.body().byteStream();
+            String fileName = extractFileNameFromUrl(imageUrl);
+            String objectName = generateObjectName(fileName);
+
+            // 获取 Content-Type，如果无法获取则默认为 image/jpeg
+            String contentType = response.header("Content-Type");
+            if (contentType == null || contentType.isEmpty()) {
+                contentType = "image/jpeg";
+            }
+
+            // 获取 Content-Length，如果无法获取则使用 -1（未知大小）
+            long contentLength = response.body().contentLength();
+
+            uploadStream(objectName, inputStream, contentLength, contentType);
+            return buildAccessUrl(objectName);
+
+        } catch (Exception e) {
+            throw new RuntimeException("从URL下载并上传图片失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从URL中提取文件名
+     *
+     * @param url URL地址
+     * @return 文件名（包含扩展名）
+     */
+    private String extractFileNameFromUrl(String url) {
+        // 去除查询参数
+        String cleanUrl = url.split("\\?")[0];
+        // 获取最后一个路径段
+        String[] segments = cleanUrl.split("/");
+        String fileName = segments[segments.length - 1];
+
+        // 如果没有扩展名，默认使用 .jpg
+        if (!fileName.contains(".")) {
+            return UUID.randomUUID() + ".jpg";
+        }
+
+        return fileName;
     }
 
     /**

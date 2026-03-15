@@ -5,6 +5,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.service.MemoryId;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +33,7 @@ public class FileDirReadTool extends BaseTool {
 
 
     @Tool
-    public String readDir(@P("文件夹的相对路径，空则代表根目录") String relativePath, @MemoryId Long appId) {
+    public String readDir(@P("文件夹的相对路径，空则代表根目录") String relativePath, @ToolMemoryId Long appId) {
         relativePath = relativePath == null ? "" : relativePath;
         String absolutePath = projectRootPath(appId) + "/" + relativePath;
         File dir = new File(absolutePath);

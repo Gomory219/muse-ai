@@ -6,6 +6,7 @@ import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.service.MemoryId;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ import java.io.File;
 public class FileReadTool extends BaseTool {
 
     @Tool("读取文件")
-    public String readFile(@P("希望读取文件的相对路径") String filePath, @MemoryId Long appId) {
+    public String readFile(@P("希望读取文件的相对路径") String filePath, @ToolMemoryId Long appId) {
         try {
             String rootPath = this.projectRootPath(appId);
             String absoluteFilePath = rootPath + "/" + filePath;

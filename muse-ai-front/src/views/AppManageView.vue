@@ -56,8 +56,9 @@ const codeTypeDropdownOpen = ref(false)
 // 代码类型选项
 const codeGenTypeOptions = [
   { label: '全部类型', value: '' },
-  { label: '单文件', value: 'single' },
-  { label: '多文件', value: 'multi' },
+  { label: '单文件', value: 'html' },
+  { label: '多文件', value: 'multi-file' },
+  { label: 'VUE工程', value: 'vue' },
 ]
 
 // 切换代码类型下拉框
@@ -95,7 +96,12 @@ const fetchApps = async () => {
     }
     if (searchForm.value.codeGenType) {
       // 转换为后端期望的值
-      queryParams.codeGenType = searchForm.value.codeGenType === 'single' ? 'HTML' : 'MULTI_FILE'
+      const typeMap: Record<string, string> = {
+        'html': 'HTML',
+        'multi-file': 'MULTI_FILE',
+        'vue': 'VUE',
+      }
+      queryParams.codeGenType = typeMap[searchForm.value.codeGenType] || searchForm.value.codeGenType.toUpperCase()
     }
     // 只看精选：priority > 0 的应用
     if (searchForm.value.onlyFeatured) {
@@ -343,9 +349,11 @@ const getCodeTypeLabel = (type?: string) => {
   const t = type.toUpperCase()
   if (t === 'HTML') return '单文件'
   if (t === 'MULTI_FILE') return '多文件'
+  if (t === 'VUE') return 'VUE工程'
   // 兼容旧值
   if (t.includes('SINGLE') || t.includes('ONE')) return '单文件'
   if (t.includes('MULTI')) return '多文件'
+  if (t.includes('VUE')) return 'VUE工程'
   return '-'
 }
 
@@ -355,9 +363,11 @@ const getCodeTypeClass = (type?: string) => {
   const t = type.toUpperCase()
   if (t === 'HTML') return 'type-single'
   if (t === 'MULTI_FILE') return 'type-multi'
+  if (t === 'VUE') return 'type-vue'
   // 兼容旧值
   if (t.includes('SINGLE') || t.includes('ONE')) return 'type-single'
   if (t.includes('MULTI')) return 'type-multi'
+  if (t.includes('VUE')) return 'type-vue'
   return ''
 }
 

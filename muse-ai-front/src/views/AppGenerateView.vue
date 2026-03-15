@@ -29,6 +29,7 @@ import { listMyApps, deployApp, updateAppName, downloadApp, getAppDetail } from 
 import { getHistory } from '@/api/historyController'
 import type { AppVO, ToolExecutionRequest } from '@/api/typings.d'
 import { useVisualEditor } from '@/composables/useVisualEditor'
+import { getCodeTypeLabel, getCodeTypeUrl } from '@/utils/format'
 
 // 初始化 markdown-it
 const md = new MarkdownIt({
@@ -305,12 +306,7 @@ const showNotReadyMessage = computed(() => {
 
 // iframe 预览
 const iframeUrl = computed(() => {
-  if (!appId.value) return ''
-  if (codeGenType.value === 'multi-file') {
-    return `${API_BASE_URL}/code/vue/${appId.value}/dist/index.html`
-  } else {
-    return `${API_BASE_URL}/code/html/${appId.value}/index.html`
-  }
+  return getCodeTypeUrl(codeGenType.value, appId.value, API_BASE_URL)
 })
 
 // iframe 加载错误处理
@@ -1436,7 +1432,7 @@ const handleCodeGenTypeChange = (type: string) => {
               </div>
               <div class="info-row">
                 <span class="info-label">代码类型</span>
-                <span class="info-value">{{ codeGenType === 'multi-file' ? '多文件' : '单文件' }}</span>
+                <span class="info-value">{{ getCodeTypeLabel(codeGenType) }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">初始需求</span>

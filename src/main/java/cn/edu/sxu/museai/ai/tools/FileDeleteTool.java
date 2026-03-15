@@ -8,6 +8,7 @@ import cn.hutool.json.JSON;
 import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.service.MemoryId;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,7 @@ public class FileDeleteTool extends BaseTool {
      * @return 删除结果
      */
     @Tool
-    public String deleteFile(@P("要删除的文件相对路径") String relativeFilePath, @MemoryId Long appId) {
+    public String deleteFile(@P("要删除的文件相对路径") String relativeFilePath, @ToolMemoryId Long appId) {
         ThrowUtils.throwIf(isImportantFile(relativeFilePath), new RuntimeException("不允许删除重要文件"));
         String absoluteFilePath = AppConstant.CODE_BATH_PATH + "/"
                             + CodeGenTypeEnum.VUE.getValue() + "/"
