@@ -1,11 +1,8 @@
-package cn.edu.sxu.museai.ai;
+package cn.edu.sxu.museai.graph.ai;
 
 import cn.edu.sxu.museai.graph.model.ImageResourceList;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
-import org.openqa.selenium.devtools.v137.page.model.ImageResource;
-
-import java.util.List;
 
 /**
  * 图片收集 AI 服务接口

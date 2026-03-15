@@ -1,6 +1,6 @@
 package cn.edu.sxu.museai.graph.node;
 
-import cn.edu.sxu.museai.ai.ImageCollectionService;
+import cn.edu.sxu.museai.graph.ai.ImageCollectionService;
 import cn.edu.sxu.museai.graph.state.WorkflowContext;
 import cn.edu.sxu.museai.utils.SpringContextUtil;
 import cn.hutool.json.JSONUtil;

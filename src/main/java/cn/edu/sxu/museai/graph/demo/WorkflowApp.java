@@ -1,4 +1,4 @@
-package cn.edu.sxu.museai.graph;
+package cn.edu.sxu.museai.graph.demo;
 
 import cn.edu.sxu.museai.graph.node.*;
 import cn.edu.sxu.museai.graph.state.WorkflowContext;
