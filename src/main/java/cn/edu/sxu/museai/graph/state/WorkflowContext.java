@@ -1,5 +1,6 @@
 package cn.edu.sxu.museai.graph.state;
 
+import cn.edu.sxu.museai.graph.model.ImageCollectionPlan;
 import cn.edu.sxu.museai.graph.model.ImageResource;
 import cn.edu.sxu.museai.graph.model.QualityResult;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
@@ -77,6 +78,22 @@ public class WorkflowContext implements Serializable {
      * 质量检查结果
      */
     private QualityResult qualityResult;
+
+    /**
+     * 图片收集计划
+     */
+    private ImageCollectionPlan imageCollectionPlan;
+
+
+    /**
+     * 并发图片收集的中间结果字段
+     */
+    private List<ImageResource> contentImages;
+    private List<ImageResource> illustrations;
+    private List<ImageResource> diagrams;
+    private List<ImageResource> logos;
+
+
 
     @Serial
     private static final long serialVersionUID = 1L;

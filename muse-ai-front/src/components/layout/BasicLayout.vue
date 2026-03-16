@@ -5,6 +5,7 @@ import { message, Dropdown, Menu, MenuItem } from 'ant-design-vue'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { userLogout, update } from '@/api/userController'
+import { uploadFile } from '@/api/fileUploadController'
 
 const router = useRouter()
 const route = useRoute()
@@ -34,6 +35,10 @@ const editForm = ref({
   userAvatar: '',
   userProfile: '',
 })
+
+// 头像上传相关
+const avatarUploading = ref(false)
+const avatarInputRef = ref<HTMLInputElement | null>(null)
 
 watch(
   () => route.path,
@@ -203,19 +208,20 @@ const handleSaveProfile = async () => {
     title="null"
     :footer="null"
     :closable="false"
-    width="420px"
+    width="480px"
   >
     <div class="edit-modal">
       <!-- 弹窗头部 -->
       <div class="modal-header">
         <span class="modal-prompt">$</span>
         <span class="modal-title">edit_profile</span>
+        <button class="modal-close" @click="editModalVisible = false">×</button>
       </div>
 
       <!-- 弹窗内容 -->
       <div class="modal-form">
         <div class="form-group">
-          <label class="form-label">账号 // read_only</label>
+          <label class="form-label">账号 <span class="form-hint">// read_only</span></label>
           <div class="form-input-readonly">{{ userStore.loginUser?.userAccount }}</div>
         </div>
         <div class="form-group">
@@ -224,6 +230,7 @@ const handleSaveProfile = async () => {
             v-model="editForm.userName"
             class="form-input"
             placeholder="输入用户名..."
+            autofocus
           />
         </div>
         <div class="form-group">
@@ -250,8 +257,9 @@ const handleSaveProfile = async () => {
         <button class="modal-btn modal-btn-cancel" @click="editModalVisible = false">
           <span>取消</span>
         </button>
-        <button class="modal-btn modal-btn-confirm" @click="handleSaveProfile">
-          <span v-if="!editModalLoading">保存</span>
+        <button class="modal-btn modal-btn-confirm" @click="handleSaveProfile" :disabled="editModalLoading">
+          <span v-if="!editModalLoading">保存修改</span>
+          <span v-else>保存中...</span>
           <span v-else class="btn-spinner"></span>
         </button>
       </div>
@@ -594,11 +602,11 @@ const handleSaveProfile = async () => {
 
 /* ===== 编辑弹窗 ===== */
 .edit-modal :deep(.ant-modal-content) {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 16px;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
 }
 
 .edit-modal :deep(.ant-modal-body) {
@@ -608,31 +616,60 @@ const handleSaveProfile = async () => {
 .modal-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #2a2a2a;
-  background: #111111;
+  gap: 10px;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+  position: relative;
+  margin-bottom: 4px;
 }
 
 .modal-prompt {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 14px;
+  font-size: 18px;
   color: #00d26a;
   font-weight: 600;
 }
 
 .modal-title {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 14px;
-  color: #ffffff;
+  font-size: 16px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.modal-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #f5f5f5;
+  border: none;
+  color: #666;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: #e8e8e8;
+  color: #1a1a1a;
 }
 
 .modal-form {
-  padding: 20px;
+  padding: 24px 24px 8px;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .form-group:last-child {
@@ -641,22 +678,30 @@ const handleSaveProfile = async () => {
 
 .form-label {
   display: block;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 12px;
-  color: #666;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #333;
   margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.form-hint {
+  color: #999;
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 6px;
 }
 
 .form-input,
 .form-textarea {
   width: 100%;
-  padding: 10px 14px;
-  background: #0a0a0a;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  color: #ffffff;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 13px;
+  padding: 12px 14px;
+  background: #f8f9fa;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 10px;
+  color: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -665,11 +710,13 @@ const handleSaveProfile = async () => {
 .form-input:focus,
 .form-textarea:focus {
   border-color: #00d26a;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 210, 106, 0.1);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: #444;
+  color: #aaa;
 }
 
 .form-textarea {
@@ -678,54 +725,65 @@ const handleSaveProfile = async () => {
 }
 
 .form-input-readonly {
-  padding: 10px 14px;
-  background: #0a0a0a;
-  border: 1px solid #1a1a1a;
-  border-radius: 6px;
-  color: #444;
+  padding: 12px 14px;
+  background: #f0f0f0;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  color: #666;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 13px;
 }
 
 .modal-footer {
   display: flex;
-  gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid #2a2a2a;
-  background: #111111;
+  gap: 12px;
+  padding: 16px 24px 24px;
+  border-top: none;
+  background: transparent;
   justify-content: flex-end;
 }
 
 .modal-btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid #2a2a2a;
-  background: transparent;
-  color: #888;
+  border: none;
+  color: #666;
 }
 
-.modal-btn-cancel:hover {
-  border-color: #444;
-  color: #fff;
+.modal-btn:hover:not(:disabled) {
+  color: #1a1a1a;
+}
+
+.modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-btn-cancel {
+  background: #f5f5f5;
+}
+
+.modal-btn-cancel:hover:not(:disabled) {
+  background: #e8e8e8;
 }
 
 .modal-btn-confirm {
-  border-color: #00d26a;
-  color: #00d26a;
-  background: rgba(0, 210, 106, 0.05);
-  min-width: 80px;
+  background: #00d26a;
+  color: #ffffff;
+  min-width: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.modal-btn-confirm:hover {
-  background: #00d26a;
-  color: #0a0a0a;
+.modal-btn-confirm:hover:not(:disabled) {
+  background: #00c05f;
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
 }
 
 .btn-spinner {

@@ -1,0 +1,42 @@
+---
+title: Graph Diagram
+---
+flowchart TD
+	__START__((start))
+	__END__((stop))
+	image_plan("image_plan")
+	prompt_enhancer("prompt_enhancer")
+	router("router")
+	code_generator("code_generator")
+	code_quality_check("code_quality_check")
+	project_builder("project_builder")
+	content_image_collector("content_image_collector")
+	illustration_collector("illustration_collector")
+	diagram_collector("diagram_collector")
+	logo_collector("logo_collector")
+	image_aggregator("image_aggregator")
+	condition1{"check state"}
+	__START__:::__START__ --> image_plan:::image_plan
+	image_plan:::image_plan --> content_image_collector:::content_image_collector
+	image_plan:::image_plan --> illustration_collector:::illustration_collector
+	image_plan:::image_plan --> diagram_collector:::diagram_collector
+	image_plan:::image_plan --> logo_collector:::logo_collector
+	content_image_collector:::content_image_collector --> image_aggregator:::image_aggregator
+	illustration_collector:::illustration_collector --> image_aggregator:::image_aggregator
+	diagram_collector:::diagram_collector --> image_aggregator:::image_aggregator
+	logo_collector:::logo_collector --> image_aggregator:::image_aggregator
+	image_aggregator:::image_aggregator --> prompt_enhancer:::prompt_enhancer
+	prompt_enhancer:::prompt_enhancer --> router:::router
+	router:::router --> code_generator:::code_generator
+	code_generator:::code_generator --> code_quality_check:::code_quality_check
+	code_quality_check:::code_quality_check -.-> condition1:::condition1
+	condition1:::condition1 -.->|fail| code_generator:::code_generator
+	%%	code_quality_check:::code_quality_check -.->|fail| code_generator:::code_generator
+	condition1:::condition1 -.->|skip_build| __END__:::__END__
+	%%	code_quality_check:::code_quality_check -.->|skip_build| __END__:::__END__
+	condition1:::condition1 -.->|build| project_builder:::project_builder
+	%%	code_quality_check:::code_quality_check -.->|build| project_builder:::project_builder
+	project_builder:::project_builder --> __END__:::__END__
+
+	classDef ___START__ fill:black,stroke-width:1px,font-size:xx-small;
+	classDef ___END__ fill:black,stroke-width:1px,font-size:xx-small;

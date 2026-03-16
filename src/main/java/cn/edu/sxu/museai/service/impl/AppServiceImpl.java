@@ -25,6 +25,7 @@ import cn.edu.sxu.museai.model.vo.UserVO;
 import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.HistoryService;
 import cn.edu.sxu.museai.service.ScreenShotService;
+import cn.edu.sxu.museai.utils.SpringContextUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.exceptions.UtilException;
 import cn.hutool.core.io.FileUtil;
@@ -38,6 +39,7 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -63,8 +65,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
     @Resource
     private ScreenShotService screenShotService;
-    @Resource
-    private SmartRouteService smartRouteService;
+
     /**
      * @param userMessage 用户prompt
      * @param appId       应用id
@@ -108,7 +109,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化prompt不能为空");
 
-        CodeGenTypeEnum codeGenTypeEnum = smartRouteService.decide(initPrompt);;
+        SmartRouteService smartRouteService = SpringContextUtil.getBean(SmartRouteService.class);
+        CodeGenTypeEnum codeGenTypeEnum = smartRouteService.decide(initPrompt);
         log.info("决定使用{}生成代码", codeGenTypeEnum);
 
         App app = App.builder()

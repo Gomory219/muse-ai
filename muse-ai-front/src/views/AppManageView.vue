@@ -629,17 +629,18 @@ onUnmounted(() => {
       title="null"
       :footer="null"
       :closable="false"
-      width="420px"
+      width="480px"
     >
       <div class="edit-modal">
         <div class="modal-header">
           <span class="modal-prompt">$</span>
           <span class="modal-title">update_app</span>
+          <button class="modal-close" @click="modalVisible = false">×</button>
         </div>
 
         <div class="modal-form">
           <div class="form-group">
-            <label class="form-label">应用ID // read_only</label>
+            <label class="form-label">应用ID <span class="form-hint">// read_only</span></label>
             <div class="form-input-readonly">{{ editingApp?.id }}</div>
           </div>
           <div class="form-group">
@@ -648,6 +649,7 @@ onUnmounted(() => {
               v-model="appForm.appName"
               class="form-input"
               placeholder="输入应用名称..."
+              autofocus
             />
           </div>
         </div>
@@ -656,9 +658,9 @@ onUnmounted(() => {
           <button class="modal-btn modal-btn-cancel" @click="modalVisible = false">
             <span>取消</span>
           </button>
-          <button class="modal-btn modal-btn-confirm" @click="handleSave">
-            <span v-if="!modalLoading">保存</span>
-            <span v-else class="btn-spinner"></span>
+          <button class="modal-btn modal-btn-confirm" @click="handleSave" :disabled="modalLoading">
+            <span v-if="!modalLoading">保存修改</span>
+            <span v-else>保存中...</span>
           </button>
         </div>
       </div>
@@ -1029,6 +1031,7 @@ onUnmounted(() => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  margin-bottom: 100px;
 }
 
 .table-header {
@@ -1473,9 +1476,10 @@ onUnmounted(() => {
 .edit-modal :deep(.ant-modal-content) {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .edit-modal :deep(.ant-modal-body) {
@@ -1486,21 +1490,22 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
   position: relative;
 }
 
 .modal-prompt {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--accent-green);
   font-weight: 600;
 }
 
 .modal-title {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .modal-close {
@@ -1508,32 +1513,34 @@ onUnmounted(() => {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   padding: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  line-height: 1;
 }
 
 .modal-close:hover {
-  background: var(--border-color);
-  color: var(--text-primary);
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: white;
 }
 
 .modal-form {
-  padding: 20px;
+  padding: 24px;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .form-group:last-child {
@@ -1542,22 +1549,27 @@ onUnmounted(() => {
 
 .form-label {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.form-hint {
   color: var(--text-muted);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .form-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -1565,6 +1577,7 @@ onUnmounted(() => {
 
 .form-input:focus {
   border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .form-input::placeholder {
@@ -1572,50 +1585,60 @@ onUnmounted(() => {
 }
 
 .form-input-readonly {
-  padding: 10px 14px;
-  background: var(--bg-primary);
+  padding: 12px 16px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 10px;
   color: var(--text-muted);
-  font-family: inherit;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 13px;
 }
 
 .modal-footer {
   display: flex;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 20px 24px;
   border-top: 1px solid var(--border-color);
   background: var(--bg-secondary);
   justify-content: flex-end;
 }
 
 .modal-btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid var(--border-color);
-  background: transparent;
+  background: var(--bg-primary);
   color: var(--text-secondary);
   font-family: inherit;
 }
 
-.modal-btn-cancel:hover {
+.modal-btn:hover:not(:disabled) {
   border-color: var(--text-muted);
   color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modal-btn-confirm {
   border-color: var(--accent-green);
-  color: var(--accent-green);
-  background: var(--accent-green-dim);
-  min-width: 80px;
+  color: white;
+  background: var(--accent-green);
+  min-width: 100px;
 }
 
-.modal-btn-confirm:hover {
-  background: var(--accent-green);
+.modal-btn-confirm:hover:not(:disabled) {
+  background: #16a34a;
+  border-color: #16a34a;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
   color: var(--bg-primary);
 }
 

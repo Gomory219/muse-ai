@@ -3,6 +3,7 @@ package cn.edu.sxu.museai.ai;
 import cn.edu.sxu.museai.ai.tools.ToolsManager;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.service.HistoryService;
+import cn.edu.sxu.museai.utils.SpringContextUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -15,6 +16,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,9 +28,9 @@ public class AiServiceFactory {
     private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
     private final ChatMemoryStore chatMemoryStore;
+
     @Resource
     private ToolsManager toolsManager;
-
     @Resource
     private HistoryService historyService;
 
@@ -43,7 +45,7 @@ public class AiServiceFactory {
             .build();
 
     @Autowired
-    public AiServiceFactory(ChatModel chatModel, StreamingChatModel streamingChatModel, ChatMemoryStore chatMemoryStore) {
+    public AiServiceFactory(@Qualifier("glmChatModelPrototype") ChatModel chatModel, @Qualifier("glmStreamingChatModelPrototype") StreamingChatModel streamingChatModel, ChatMemoryStore chatMemoryStore) {
         this.chatModel = chatModel;
         this.streamingChatModel = streamingChatModel;
         this.chatMemoryStore = chatMemoryStore;
@@ -62,19 +64,11 @@ public class AiServiceFactory {
 
 
     public AiService createAiService(Long appId, CodeGenTypeEnum codeType) {
-        String baseUrl = "https://open.bigmodel.cn/api/paas/v4/";
-        String apiKey = System.getenv("GLM_KEY");
-        String modelName = "GLM-4.7-FlashX";
-        StreamingChatModel glmStreamingChatModel = OpenAiStreamingChatModel.builder()
-                .baseUrl(baseUrl)
-                .apiKey(apiKey)
-                .modelName(modelName)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
 
         return switch (codeType) {
             case HTML, MULTI_FILE -> {
+                StreamingChatModel glmStreamingChatModel = SpringContextUtil.getBean("glmStreamingChatModelPrototype", StreamingChatModel.class);
+                ChatModel glmChatModel = SpringContextUtil.getBean("glmChatModelPrototype", ChatModel.class);
                 MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                         .alwaysKeepSystemMessageFirst(true)
                         .id(appId)
@@ -85,11 +79,13 @@ public class AiServiceFactory {
                 log.info("Loaded {} messages to memory for app {}", n, appId);
                 yield AiServices.builder(AiService.class)
                         .chatMemory(chatMemory)
-                        .chatModel(chatModel)
+                        .chatModel(glmChatModel)
                         .streamingChatModel(glmStreamingChatModel)
                         .build();
             }
             case VUE -> {
+                StreamingChatModel minimaxStreamingChatModel = SpringContextUtil.getBean("miniMaxStreamingChatModelPrototype", StreamingChatModel.class);
+                ChatModel minimaxChatModel = SpringContextUtil.getBean("miniMaxChatModelPrototype", ChatModel.class);
                 MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                         .alwaysKeepSystemMessageFirst(true)
                         .id(appId)
@@ -105,8 +101,8 @@ public class AiServiceFactory {
                             return ToolExecutionResultMessage.from(request, "该工具不存在");
                         })
                         .chatMemoryProvider((memoryId -> chatMemory))
-                        .chatModel(chatModel)
-                        .streamingChatModel(streamingChatModel)
+                        .chatModel(minimaxChatModel)
+                        .streamingChatModel(minimaxStreamingChatModel)
                         .build();
             }
         };
@@ -115,21 +111,10 @@ public class AiServiceFactory {
     }
 
     @Bean
-    public AiService createAiService(ChatModel chatModel, ChatMemoryStore chatMemoryStore) {
-        String baseUrl = "https://open.bigmodel.cn/api/paas/v4/";
-        String apiKey = System.getenv("GLM_KEY");
-        String modelName = "GLM-4.7-FlashX";
-        StreamingChatModel o = OpenAiStreamingChatModel.builder()
-                .baseUrl(baseUrl)
-                .apiKey(apiKey)
-                .modelName(modelName)
-                .logResponses(true)
-                .logRequests(true)
-                .build();
-
+    public AiService createAiService(ChatMemoryStore chatMemoryStore) {
         return AiServices.builder(AiService.class)
                 .chatModel(chatModel)
-                .streamingChatModel(o)
+                .streamingChatModel(streamingChatModel)
                 .chatMemoryProvider(memoryId ->
                     MessageWindowChatMemory.builder()
                             .chatMemoryStore(chatMemoryStore)

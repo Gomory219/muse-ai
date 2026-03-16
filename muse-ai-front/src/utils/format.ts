@@ -122,7 +122,7 @@ export function getCodeTypeUrl(type?: string, appId?: string, apiBaseUrl: string
     return `${apiBaseUrl}/code/html/${appId}/index.html`
   }
   if (t === 'MULTI_FILE') {
-    return `${apiBaseUrl}/multi-file/${appId}/index.html`
+    return `${apiBaseUrl}/code/multi-file/${appId}/index.html`
   }
   if (t === 'VUE') {
     return `${apiBaseUrl}/code/vue/${appId}/dist/index.html`
@@ -132,7 +132,7 @@ export function getCodeTypeUrl(type?: string, appId?: string, apiBaseUrl: string
     return `${apiBaseUrl}/code/vue/${appId}/dist/index.html`
   }
   if (t.includes('MULTI')) {
-    return `${apiBaseUrl}/multi-file/${appId}/index.html`
+    return `${apiBaseUrl}/code/multi-file/${appId}/index.html`
   }
   // 默认返回单文件路径
   return `${apiBaseUrl}/code/html/${appId}/index.html`
