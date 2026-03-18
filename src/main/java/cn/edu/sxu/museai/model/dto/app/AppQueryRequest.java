@@ -2,6 +2,7 @@ package cn.edu.sxu.museai.model.dto.app;
 
 import cn.edu.sxu.museai.common.PageRequest;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,6 +14,7 @@ import java.io.Serializable;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Builder
 public class AppQueryRequest extends PageRequest implements Serializable {
 
     /**
@@ -47,4 +49,13 @@ public class AppQueryRequest extends PageRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
+
+    public static void main(String[] args) {
+        AppQueryRequest request = AppQueryRequest.builder().id(2L).appName("test").build();
+
+        AppQueryRequest request2 = AppQueryRequest.builder().id(2L).appName("test").build();
+
+        System.out.println(request.hashCode());
+        System.out.println(request2.hashCode());
+    }
 }

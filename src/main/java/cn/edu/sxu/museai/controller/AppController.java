@@ -14,6 +14,7 @@ import cn.edu.sxu.museai.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -135,6 +136,11 @@ public class AppController {
      * @return 分页结果
      */
     @GetMapping("/list/featured")
+    @Cacheable(
+            value = "feature:app",
+            key = "T(cn.edu.sxu.museai.utils.CacheKeyUtils).generateCacheKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum<5"
+    )
     public BaseResponse<PageResult<AppVO>> listFeaturedApps(AppQueryRequest appQueryRequest) {
         PageResult<AppVO> pageResult = appService.listFeaturedApps(appQueryRequest);
         return ResultUtils.success(pageResult);

@@ -3403,10 +3403,11 @@ const handleCodeGenTypeChange = (type: string) => {
 /* ===== 部署成功弹窗 ===== */
 /* 覆盖 ant-design modal 样式 */
 :deep(.ant-modal-content) {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-color);
+  background: #ffffff !important;
+  border: none;
   border-radius: 16px !important;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.ant-modal-header) {
@@ -3420,11 +3421,11 @@ const handleCodeGenTypeChange = (type: string) => {
 }
 
 :deep(.ant-modal-close) {
-  color: var(--text-muted);
+  color: #999;
 }
 
 :deep(.ant-modal-close:hover) {
-  color: var(--text-primary);
+  color: #1a1a1a;
 }
 
 .deploy-modal-content {
@@ -3497,13 +3498,13 @@ const handleCodeGenTypeChange = (type: string) => {
 .deploy-success-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1a1a1a;
   margin: 0 0 8px 0;
 }
 
 .deploy-success-desc {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #666;
   margin: 0 0 20px 0;
   text-align: center;
 }
@@ -3515,7 +3516,7 @@ const handleCodeGenTypeChange = (type: string) => {
 
 .deploy-url-label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #999;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -3526,8 +3527,8 @@ const handleCodeGenTypeChange = (type: string) => {
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   transition: all 0.2s;
 }
@@ -3539,7 +3540,7 @@ const handleCodeGenTypeChange = (type: string) => {
 .deploy-url-text {
   flex: 1;
   font-size: 13px;
-  color: var(--text-primary);
+  color: #1a1a1a;
   word-break: break-all;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
@@ -3552,7 +3553,7 @@ const handleCodeGenTypeChange = (type: string) => {
   background: var(--accent-green);
   border: none;
   border-radius: 6px;
-  color: var(--bg-primary);
+  color: #ffffff;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -3561,7 +3562,7 @@ const handleCodeGenTypeChange = (type: string) => {
 }
 
 .copy-url-btn:hover {
-  background: #00e078;
+  background: #00c260;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
 }
@@ -3592,9 +3593,9 @@ const handleCodeGenTypeChange = (type: string) => {
 }
 
 .deploy-action-btn.secondary {
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  color: #666;
+  border: 1px solid #e0e0e0;
 }
 
 .deploy-action-btn.secondary:hover {
@@ -3604,7 +3605,7 @@ const handleCodeGenTypeChange = (type: string) => {
 
 .deploy-action-btn.primary {
   background: var(--accent-green);
-  color: var(--bg-primary);
+  color: #ffffff;
 }
 
 .deploy-action-btn.primary:hover {

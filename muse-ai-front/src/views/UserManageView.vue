@@ -1400,11 +1400,12 @@ onUnmounted(() => {
 
 /* ===== 编辑弹窗 ===== */
 .edit-modal :deep(.ant-modal-content) {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background: #ffffff;
+  border: none;
+  border-radius: 16px;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 .edit-modal :deep(.ant-modal-body) {
@@ -1415,21 +1416,21 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
   position: relative;
 }
 
 .modal-prompt {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--accent-green);
   font-weight: 600;
 }
 
 .modal-title {
-  font-size: 14px;
-  color: var(--text-primary);
+  font-size: 15px;
+  color: #1a1a1a;
 }
 
 .modal-close {
@@ -1437,32 +1438,33 @@ onUnmounted(() => {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
+  background: #f5f5f5;
   border: none;
-  color: var(--text-muted);
+  color: #666;
   font-size: 24px;
   cursor: pointer;
   padding: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .modal-close:hover {
-  background: var(--border-color);
-  color: var(--text-primary);
+  background: var(--accent-green);
+  color: white;
 }
 
 .modal-form {
-  padding: 20px;
+  padding: 24px;
+  background: #ffffff;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .form-group:last-child {
@@ -1471,23 +1473,22 @@ onUnmounted(() => {
 
 .form-label {
   display: block;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+  font-weight: 500;
 }
 
 .form-input,
 .form-textarea {
   width: 100%;
-  padding: 10px 14px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  color: #1a1a1a;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -1496,16 +1497,18 @@ onUnmounted(() => {
 .form-input:focus,
 .form-textarea:focus {
   border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px rgba(0, 210, 106, 0.1);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: var(--text-muted);
+  color: #aaa;
 }
 
 .form-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #f8f9fa;
 }
 
 .form-textarea {
@@ -1516,73 +1519,77 @@ onUnmounted(() => {
 /* 角色选择器 */
 .role-selector {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .role-option {
   flex: 1;
-  padding: 10px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: #666;
 }
 
 .role-option:hover {
   border-color: var(--accent-green);
+  color: var(--accent-green);
 }
 
 .role-option.active {
-  background: var(--accent-green-dim);
+  background: rgba(0, 210, 106, 0.1);
   border-color: var(--accent-green);
   color: var(--accent-green);
+  font-weight: 500;
 }
 
 .modal-footer {
   display: flex;
-  gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
   justify-content: flex-end;
 }
 
 .modal-btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-secondary);
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  color: #666;
   font-family: inherit;
 }
 
 .modal-btn-cancel:hover {
-  border-color: var(--text-muted);
-  color: var(--text-primary);
+  border-color: #ccc;
+  color: #1a1a1a;
 }
 
 .modal-btn-confirm {
   border-color: var(--accent-green);
-  color: var(--accent-green);
-  background: var(--accent-green-dim);
-  min-width: 80px;
+  color: white;
+  background: var(--accent-green);
+  min-width: 100px;
 }
 
 .modal-btn-confirm:hover {
-  background: var(--accent-green);
-  color: var(--bg-primary);
+  background: #00c260;
+  border-color: #00c260;
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
 }
 
 .modal-btn-close {
-  border-color: var(--border-color);
-  color: var(--text-secondary);
+  border-color: #e0e0e0;
+  color: #666;
 }
 
 .modal-btn-close:hover {
@@ -1593,8 +1600,8 @@ onUnmounted(() => {
 .btn-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(10, 10, 10, 0.3);
-  border-top-color: #0a0a0a;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
@@ -1606,11 +1613,12 @@ onUnmounted(() => {
 
 /* ===== 详情弹窗 ===== */
 .detail-modal :deep(.ant-modal-content) {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background: #ffffff;
+  border: none;
+  border-radius: 16px;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 .detail-modal :deep(.ant-modal-body) {
@@ -1619,13 +1627,14 @@ onUnmounted(() => {
 
 .detail-content {
   padding: 20px;
+  background: #ffffff;
 }
 
 .detail-item {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .detail-item:last-child {
@@ -1635,19 +1644,22 @@ onUnmounted(() => {
 .detail-key {
   width: 100px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #999;
   text-transform: uppercase;
 }
 
 .detail-value {
   flex: 1;
   font-size: 13px;
-  color: var(--text-primary);
+  color: #1a1a1a;
 }
 
 .detail-mono {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  color: var(--text-secondary);
+  color: #666;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 /* ===== 响应式 ===== */

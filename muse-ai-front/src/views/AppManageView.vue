@@ -1474,12 +1474,12 @@ onUnmounted(() => {
 
 /* ===== 编辑弹窗 ===== */
 .edit-modal :deep(.ant-modal-content) {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: none;
   border-radius: 16px;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 .edit-modal :deep(.ant-modal-body) {
@@ -1491,8 +1491,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
   position: relative;
 }
 
@@ -1504,7 +1504,7 @@ onUnmounted(() => {
 
 .modal-title {
   font-size: 15px;
-  color: var(--text-primary);
+  color: #1a1a1a;
   font-weight: 500;
 }
 
@@ -1513,9 +1513,9 @@ onUnmounted(() => {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+  background: #f5f5f5;
+  border: none;
+  color: #666;
   font-size: 20px;
   cursor: pointer;
   padding: 0;
@@ -1531,12 +1531,12 @@ onUnmounted(() => {
 
 .modal-close:hover {
   background: var(--accent-green);
-  border-color: var(--accent-green);
   color: white;
 }
 
 .modal-form {
   padding: 24px;
+  background: #ffffff;
 }
 
 .form-group {
@@ -1550,13 +1550,13 @@ onUnmounted(() => {
 .form-label {
   display: block;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #666;
   margin-bottom: 10px;
   font-weight: 500;
 }
 
 .form-hint {
-  color: var(--text-muted);
+  color: #999;
   font-size: 12px;
   font-weight: 400;
 }
@@ -1564,10 +1564,10 @@ onUnmounted(() => {
 .form-input {
   width: 100%;
   padding: 12px 16px;
-  background: var(--bg-primary);
-  border: 1.5px solid var(--border-color);
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
-  color: var(--text-primary);
+  color: #1a1a1a;
   font-family: inherit;
   font-size: 14px;
   outline: none;
@@ -1577,19 +1577,19 @@ onUnmounted(() => {
 
 .form-input:focus {
   border-color: var(--accent-green);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 210, 106, 0.1);
 }
 
 .form-input::placeholder {
-  color: var(--text-muted);
+  color: #aaa;
 }
 
 .form-input-readonly {
   padding: 12px 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
   border-radius: 10px;
-  color: var(--text-muted);
+  color: #666;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 13px;
 }
@@ -1598,8 +1598,8 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
   justify-content: flex-end;
 }
 
@@ -1610,15 +1610,15 @@ onUnmounted(() => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  color: #666;
   font-family: inherit;
 }
 
 .modal-btn:hover:not(:disabled) {
-  border-color: var(--text-muted);
-  color: var(--text-primary);
+  border-color: #ccc;
+  color: #1a1a1a;
   transform: translateY(-1px);
 }
 
@@ -1635,16 +1635,14 @@ onUnmounted(() => {
 }
 
 .modal-btn-confirm:hover:not(:disabled) {
-  background: #16a34a;
-  border-color: #16a34a;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-}
-  color: var(--bg-primary);
+  background: #00c260;
+  border-color: #00c260;
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
 }
 
 .modal-btn-close {
-  border-color: var(--border-color);
-  color: var(--text-secondary);
+  border-color: #e0e0e0;
+  color: #666;
 }
 
 .modal-btn-close:hover {
@@ -1655,8 +1653,8 @@ onUnmounted(() => {
 .btn-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(10, 10, 10, 0.3);
-  border-top-color: #0a0a0a;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
@@ -1668,8 +1666,8 @@ onUnmounted(() => {
 
 /* ===== 详情弹窗 ===== */
 .detail-modal :deep(.ant-modal-content) {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: none;
   border-radius: 12px;
   padding: 0;
   overflow: hidden;
@@ -1683,13 +1681,14 @@ onUnmounted(() => {
   padding: 20px;
   max-height: 60vh;
   overflow-y: auto;
+  background: #ffffff;
 }
 
 .detail-item {
   display: flex;
   align-items: flex-start;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .detail-item:last-child {
@@ -1699,7 +1698,7 @@ onUnmounted(() => {
 .detail-key {
   width: 100px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #999;
   text-transform: uppercase;
   flex-shrink: 0;
 }
@@ -1707,12 +1706,15 @@ onUnmounted(() => {
 .detail-value {
   flex: 1;
   font-size: 13px;
-  color: var(--text-primary);
+  color: #1a1a1a;
 }
 
 .detail-mono {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  color: var(--text-secondary);
+  color: #666;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 /* ===== 响应式 ===== */
