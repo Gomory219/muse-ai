@@ -95,3 +95,11 @@ glm:
   log-request: true
   log-response: true
   max-tokens: 8192
+
+qwen:
+  base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  api-key: ${ALIYUN_AI_KEY}
+  model-name: qwen-turbo
+  log-request: true
+  log-response: true
+  max-tokens: 128

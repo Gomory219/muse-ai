@@ -1,6 +1,7 @@
 package cn.edu.sxu.museai.ai;
 
 import cn.edu.sxu.museai.ai.tools.ToolsManager;
+import cn.edu.sxu.museai.guardrail.PromptSafetyInputGuardrail;
 import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.service.HistoryService;
 import cn.edu.sxu.museai.utils.SpringContextUtil;
@@ -102,6 +103,7 @@ public class AiServiceFactory {
                         })
                         .chatMemoryProvider((memoryId -> chatMemory))
                         .chatModel(minimaxChatModel)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
                         .streamingChatModel(minimaxStreamingChatModel)
                         .build();
             }

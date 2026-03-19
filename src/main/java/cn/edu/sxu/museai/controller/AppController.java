@@ -9,6 +9,8 @@ import cn.edu.sxu.museai.model.dto.app.*;
 import cn.edu.sxu.museai.model.entity.User;
 import cn.edu.sxu.museai.model.enums.UserRoleEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
+import cn.edu.sxu.museai.ratelimit.RateLimit;
+import cn.edu.sxu.museai.ratelimit.RateLimitType;
 import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.UserService;
 import com.mybatisflex.core.paginate.Page;
@@ -32,6 +34,7 @@ public class AppController {
     private final AppService appService;
     private final UserService userService;
 
+    @RateLimit(rate = 1, limitType = RateLimitType.IP, rateInterval = 60)
     @PostMapping(value = "/chat",  produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatToGenApp(@RequestBody AppChatRequest appChatRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -141,6 +144,7 @@ public class AppController {
             key = "T(cn.edu.sxu.museai.utils.CacheKeyUtils).generateCacheKey(#appQueryRequest)",
             condition = "#appQueryRequest.pageNum<5"
     )
+    @RateLimit(rate = 3, limitType = RateLimitType.IP, rateInterval = 60)
     public BaseResponse<PageResult<AppVO>> listFeaturedApps(AppQueryRequest appQueryRequest) {
         PageResult<AppVO> pageResult = appService.listFeaturedApps(appQueryRequest);
         return ResultUtils.success(pageResult);
