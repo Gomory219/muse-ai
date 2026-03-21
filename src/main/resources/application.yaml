@@ -103,3 +103,12 @@ qwen:
   log-request: true
   log-response: true
   max-tokens: 128
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

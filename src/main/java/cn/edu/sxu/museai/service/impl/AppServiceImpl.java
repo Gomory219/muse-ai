@@ -22,6 +22,8 @@ import cn.edu.sxu.museai.model.enums.CodeGenTypeEnum;
 import cn.edu.sxu.museai.model.enums.MessageTypeEnum;
 import cn.edu.sxu.museai.model.vo.AppVO;
 import cn.edu.sxu.museai.model.vo.UserVO;
+import cn.edu.sxu.museai.monitor.MonitorContext;
+import cn.edu.sxu.museai.monitor.MonitorContextHolder;
 import cn.edu.sxu.museai.service.AppService;
 import cn.edu.sxu.museai.service.HistoryService;
 import cn.edu.sxu.museai.service.ScreenShotService;
@@ -99,8 +101,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 //        }).concatWithValues(JSONUtil.toJsonStr(e)).doOnCancel(() -> {
 //            log.info("用户取消生成代码");
 //        });
+        MonitorContextHolder.setContext(
+                MonitorContext.builder()
+                        .appId(appId)
+                        .userId(userId)
+                        .build()
+        );
         return aiCodeGeneratorFacade.generateCodeAndSaveStreaming(userMessage, app.getCodeGenType(), appId, userId)
-                .doOnNext(System.out::println);
+                .doFinally((s) -> MonitorContextHolder.clearContext());
     }
 
     @Override
