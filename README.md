@@ -13,6 +13,7 @@
 ## 目录
 
 - [核心特性](#核心特性)
+- [项目截图](#项目截图)
 - [技术栈](#技术栈)
 - [代码生成架构](#代码生成架构)
   - [LangChain4j 实现](#langchain4j-实现)
@@ -37,6 +38,48 @@
 - **代码质量检查** - AI 自动检查生成代码的质量
 - **分布式会话** - 基于 Redis 的分布式会话管理和聊天记忆
 - **自动截图** - 基于 Selenium 的网页自动截图服务
+
+---
+
+## 项目截图
+
+### 完整应用界面
+
+<div align="center">
+  <img src="docs/screenshots/01-home.png" alt="应用首页" width="900"/>
+  <p><em>应用首页 - 用户登录后的主界面</em></p>
+</div>
+
+<br>
+
+### 首页精选应用
+
+<div align="center">
+  <img src="docs/screenshots/02-feature.png" alt="首页精选应用" width="900"/>
+  <p><em>应用首页 - 首页中展示精选应用</em></p>
+</div>
+
+<br>
+
+
+### AI 代码生成界面 + 代码实时预览
+
+<div align="center">
+  <img src="docs/screenshots/03-code-generation.png" alt="代码生成界面" width="900"/>
+  <p><em>AI 对话界面 - 自然语言输入，实时生成代码</em></p>
+</div>
+
+<br>
+
+### 可视化编辑
+
+<div align="center">
+  <img src="docs/screenshots/04-visual-editor.png" alt="可视化编辑" width="900"/>
+  <p><em>可视化编辑 - 点击元素进行编辑和样式修改</em></p>
+</div>
+
+<br>
+
 
 ---
 
