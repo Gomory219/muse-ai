@@ -61,11 +61,19 @@
 
 <br>
 
+### 我的应用展示
+
+<div align="center">
+  <img src="docs/screenshots/03-my.png" alt="首页精选应用" width="900"/>
+  <p><em>应用首页 - 首页中展示我的应用</em></p>
+</div>
+
+<br>
 
 ### AI 代码生成界面 + 代码实时预览
 
 <div align="center">
-  <img src="docs/screenshots/03-code-generation.png" alt="代码生成界面" width="900"/>
+  <img src="docs/screenshots/04-code-generation.png" alt="代码生成界面" width="900"/>
   <p><em>AI 对话界面 - 自然语言输入，实时生成代码</em></p>
 </div>
 
@@ -74,13 +82,31 @@
 ### 可视化编辑
 
 <div align="center">
-  <img src="docs/screenshots/04-visual-editor.png" alt="可视化编辑" width="900"/>
+  <img src="docs/screenshots/05-visual-editor.png" alt="可视化编辑" width="900"/>
   <p><em>可视化编辑 - 点击元素进行编辑和样式修改</em></p>
 </div>
 
 <br>
 
 
+### 用户管理
+
+<div align="center">
+  <img src="docs/screenshots/06-user.png" alt="用户管理" width="900"/>
+  <p><em>用户管理 - 网站用户预览与编辑</em></p>
+</div>
+
+<br>
+
+
+### 应用管理
+
+<div align="center">
+  <img src="docs/screenshots/07-app.png" alt="应用管理" width="900"/>
+  <p><em>应用管理 - 生成应用列表</em></p>
+</div>
+
+<br>
 ---
 
 ## 技术栈
