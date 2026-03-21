@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: muse-ai-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 106.54.215.151:8848
+        namespace: 47f6fb31-1206-4a12-9dfb-e595de064aed
+    gateway:
+      server:
+        webmvc:
+          routes:
+            # 用户服务路由 - /api/user/**
+            - id: user-service
+              uri: lb://muse-ai-user
+              predicates:
+                - Path=/user/**
+            # 应用服务路由 - /api/app/**
+            - id: app-service
+              uri: lb://muse-ai-app
+              predicates:
+                - Path=/**
+server:
+  servlet:
+    context-path: /api
+
+  port: 7777
