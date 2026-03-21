@@ -84,7 +84,7 @@ const loadMyApps = async () => {
     const res = await listMyApps({
       appQueryRequest: {
         pageNum: 1,
-        pageSize: 8,
+        pageSize: 6,
       },
     })
     if (res.data.code === 0 && res.data.data) {
@@ -253,7 +253,7 @@ onUnmounted(() => {
         </button>
       </div>
       <div v-if="myAppsLoading" class="loading-skeleton">
-        <div v-for="i in 4" :key="i" class="app-card skeleton">
+        <div v-for="i in 6" :key="i" class="app-card skeleton">
           <div class="skeleton-cover"></div>
           <div class="skeleton-info">
             <div class="skeleton-line"></div>

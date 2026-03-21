@@ -252,7 +252,6 @@ const getDefaultAvatar = (userName?: string) => {
   <!-- 编辑个人信息弹窗 -->
   <a-modal
     v-model:open="editModalVisible"
-    title="null"
     :footer="null"
     :closable="false"
     width="480px"

@@ -9,6 +9,7 @@ import {
   deleteUsingPost,
   getVo,
 } from '@/api/userController'
+import { uploadFile } from '@/api/fileUploadController'
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
@@ -93,6 +94,10 @@ const userForm = ref<API.UserVO>({
   userRole: 'user',
   createTime: '',
 })
+
+// 头像上传相关
+const avatarUploading = ref(false)
+const avatarInputRef = ref<HTMLInputElement | null>(null)
 
 // 详情弹窗
 const detailVisible = ref(false)
@@ -321,6 +326,53 @@ const handleSave = async () => {
   } finally {
     modalLoading.value = false
   }
+}
+
+// 头像上传处理
+const handleAvatarClick = () => {
+  avatarInputRef.value?.click()
+}
+
+const handleAvatarChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    message.warning('请选择图片文件')
+    return
+  }
+
+  // 验证文件大小（2MB）
+  if (file.size > 2 * 1024 * 1024) {
+    message.warning('图片大小不能超过2MB')
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const res = await uploadFile(file)
+    if (res.data.code === 0 && res.data.data) {
+      userForm.value.userAvatar = res.data.data
+      message.success('头像上传成功')
+    } else {
+      message.error(res.data.message || '上传失败')
+    }
+  } catch (error) {
+    message.error('上传失败')
+  } finally {
+    avatarUploading.value = false
+    // 清空 input 以便可以重复选择同一文件
+    target.value = ''
+  }
+}
+
+// 获取默认头像
+const getDefaultAvatar = (userName?: string) => {
+  if (!userName) return 'U'
+  const firstChar = userName.charAt(0).toUpperCase()
+  return firstChar
 }
 
 // 删除用户
@@ -588,7 +640,6 @@ onUnmounted(() => {
     <!-- 添加/编辑用户弹窗 -->
     <a-modal
       v-model:open="modalVisible"
-      title="null"
       :footer="null"
       :closable="false"
       width="420px"
@@ -600,6 +651,32 @@ onUnmounted(() => {
         </div>
 
         <div class="modal-form">
+          <!-- 头像区域 -->
+          <div class="avatar-section">
+            <div class="avatar-wrapper" @click="handleAvatarClick">
+              <img
+                v-if="userForm.userAvatar"
+                :src="userForm.userAvatar"
+                class="avatar-image"
+                alt="头像"
+              />
+              <div v-else class="avatar-placeholder">
+                <span class="avatar-text">{{ getDefaultAvatar(userForm.userName) }}</span>
+              </div>
+              <div class="avatar-overlay">
+                <span v-if="!avatarUploading">点击上传</span>
+                <span v-else>上传中...</span>
+              </div>
+            </div>
+            <input
+              ref="avatarInputRef"
+              type="file"
+              accept="image/*"
+              class="avatar-input"
+              @change="handleAvatarChange"
+            />
+          </div>
+
           <div class="form-group">
             <label class="form-label">账号</label>
             <input
@@ -615,14 +692,6 @@ onUnmounted(() => {
               v-model="userForm.userName"
               class="form-input"
               placeholder="输入用户名..."
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">头像URL</label>
-            <input
-              v-model="userForm.userAvatar"
-              class="form-input"
-              placeholder="输入头像URL..."
             />
           </div>
           <div class="form-group">
@@ -668,7 +737,6 @@ onUnmounted(() => {
     <!-- 用户详情弹窗 -->
     <a-modal
       v-model:open="detailVisible"
-      title="null"
       :footer="null"
       :closable="false"
       width="420px"
@@ -1418,7 +1486,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+  background: #ffffff;
   position: relative;
 }
 
@@ -1461,6 +1529,75 @@ onUnmounted(() => {
 .modal-form {
   padding: 24px;
   background: #ffffff;
+}
+
+/* 头像区域 */
+.avatar-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.avatar-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.avatar-wrapper:hover {
+  box-shadow: 0 4px 16px rgba(0, 210, 106, 0.3);
+  transform: scale(1.02);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #00d26a 0%, #00a856 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-text {
+  font-size: 32px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay span {
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.avatar-input {
+  display: none;
 }
 
 .form-group {

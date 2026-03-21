@@ -626,7 +626,6 @@ onUnmounted(() => {
     <!-- 编辑应用弹窗 -->
     <a-modal
       v-model:open="modalVisible"
-      title="null"
       :footer="null"
       :closable="false"
       width="480px"
@@ -1492,7 +1491,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+  background: #ffffff;
   position: relative;
 }
 

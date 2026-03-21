@@ -79,3 +79,8 @@ CLAUDE.md
 /tmp/
 /test.md
 /prometheus-3.5.1.windows-amd64/
+
+# Other files that should not be committed
+nul
+/nginx-1.28.2/
+grafana.json
