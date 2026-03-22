@@ -156,7 +156,7 @@
 ### 架构图
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[AI 调用请求] --> B[AiModelMonitorListener]
     B --> C{监听事件类型}
 
@@ -169,8 +169,8 @@ flowchart LR
     F --> G
 
     G --> H[Micrometer MeterRegistry]
-    H --> I[/actuator/prometheus]
-    I --> J[Prometheus]
+    H --> I["/actuator/prometheus"]
+    I --> J["Prometheus"]
     J --> K[Grafana 仪表板]
 
     style A fill:#e1f5ff
