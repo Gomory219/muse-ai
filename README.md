@@ -15,6 +15,7 @@
 - [核心特性](#核心特性)
 - [项目截图](#项目截图)
 - [技术栈](#技术栈)
+- [可观测性](#可观测性)
 - [代码生成架构](#代码生成架构)
   - [LangChain4j 实现](#langchain4j-实现)
   - [LangGraph4j 实现](#langgraph4j-实现)
@@ -139,6 +140,136 @@
 - **Knife4j** 4.4.0 - API 文档
 - **Selenium** 4.33.0 - 网页自动化
 - **Hutool** 5.8.40 - 工具类库
+
+### 可观测性
+- **Micrometer** - 指标收集框架
+- **Prometheus** - 指标存储与查询
+- **Grafana** - 可视化监控仪表板
+- **Spring Boot Actuator** - 应用监控端点
+
+---
+
+## 可观测性
+
+本项目实现了完整的 AI 调用可观测性方案，通过 Prometheus + Grafana 实时监控 AI 模型调用情况。
+
+### 架构图
+
+```mermaid
+flowchart LR
+    A[AI 调用请求] --> B[AiModelMonitorListener]
+    B --> C{监听事件类型}
+
+    C -->|onRequest| D[记录请求开始时间]
+    C -->|onResponse| E[收集响应指标]
+    C -->|onError| F[收集错误指标]
+
+    D --> G[AiModelMetricsCollector]
+    E --> G
+    F --> G
+
+    G --> H[Micrometer MeterRegistry]
+    H --> I[/actuator/prometheus]
+    I --> J[Prometheus]
+    J --> K[Grafana 仪表板]
+
+    style A fill:#e1f5ff
+    style G fill:#fff4e1
+    style J fill:#ffe1e1
+    style K fill:#e1ffe1
+```
+
+### 核心组件
+
+| 组件 | 路径 | 作用 |
+|------|------|------|
+| `AiModelMonitorListener` | `monitor/AiModelMonitorListener.java` | 实现 LangChain4j 的 `ChatModelListener`，监听 AI 调用事件 |
+| `AiModelMetricsCollector` | `monitor/AiModelMetricsCollector.java` | 使用 Micrometer 收集和记录指标 |
+| `MonitorContext` | `monitor/MonitorContext.java` | 监控上下文，存储 userId 和 appId |
+| `MonitorContextHolder` | `monitor/MonitorContextHolder.java` | ThreadLocal 上下文管理器 |
+
+### 监控指标
+
+项目收集以下 AI 模型调用指标：
+
+| 指标名称 | 类型 | 描述 | 标签 |
+|----------|------|------|------|
+| `ai_model_requests_total` | Counter | AI 模型总请求次数 | user_id, app_id, model_name, status |
+| `ai_model_errors_total` | Counter | AI 模型错误次数 | user_id, app_id, model_name, error_message |
+| `ai_model_tokens_total` | Counter | AI 模型 Token 消耗总数 | user_id, app_id, model_name, token_type |
+| `ai_model_response_duration_seconds` | Timer | AI 模型响应时间 | user_id, app_id, model_name |
+
+### 集成方式
+
+监控通过 LangChain4j 的 Listener 机制自动集成，无需手动埋点：
+
+```java
+// 1. 在业务代码中设置监控上下文
+MonitorContextHolder.setContext(
+    MonitorContext.builder()
+        .appId(appId)
+        .userId(userId)
+        .build()
+);
+
+// 2. AI 调用时自动记录指标
+// Listener 会自动捕获 onRequest、onResponse、onError 事件
+```
+
+### Prometheus 配置
+
+在 `prometheus.yml` 中添加以下配置：
+
+```yaml
+scrape_configs:
+  - job_name: 'muse-ai'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:7777']
+```
+
+### Grafana 仪表板
+
+#### 监控大屏
+
+<div align="center">
+  <img src="docs/screenshots/grafana-dashboard.png" alt="Grafana 监控仪表板" width="1100"/>
+  <p><em>Grafana 监控仪表板 - AI 模型调用实时监控</em></p>
+</div>
+
+<br>
+
+#### 查询示例
+
+推荐的 Grafana 面板查询示例：
+
+```promql
+# AI 请求成功率
+sum(rate(ai_model_requests_total{status="success"}[5m])) by (model_name)
+/
+sum(rate(ai_model_requests_total[5m])) by (model_name)
+
+# AI 平均响应时间
+rate(ai_model_response_duration_seconds_sum[5m])
+/
+rate(ai_model_response_duration_seconds_count[5m])
+
+# Token 消耗趋势
+sum(rate(ai_model_tokens_total[1h])) by (model_name, token_type)
+
+# 错误率
+sum(rate(ai_model_errors_total[5m])) by (model_name)
+/
+sum(rate(ai_model_requests_total[5m])) by (model_name)
+```
+
+### Actuator 端点
+
+| 端点 | 描述 |
+|------|------|
+| `/api/actuator/health` | 健康检查 |
+| `/api/actuator/info` | 应用信息 |
+| `/api/actuator/prometheus` | Prometheus 指标暴露 |
 
 ---
 
